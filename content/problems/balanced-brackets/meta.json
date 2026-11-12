@@ -1,0 +1,18 @@
+{
+  "id": "balanced-brackets",
+  "title": "Balanced Brackets",
+  "difficulty": "easy",
+  "unit": "stack",
+  "tags": ["stack", "matching pairs"],
+  "entrypoint": "is_balanced",
+  "params": [{ "name": "text", "type": "str" }],
+  "returns": "bool",
+  "comparator": "exact",
+  "time_limit_ms": 2000,
+  "hints": [
+    "The bracket that must close next is always the one that was opened most recently.",
+    "\"Most recently opened, first to close\" is exactly what a stack gives you.",
+    "Push every opener. On a closer, the stack must be non-empty and its top must be the matching opener. At the end the stack must be empty."
+  ],
+  "complexity": { "time": "O(n)", "space": "O(n)" }
+}

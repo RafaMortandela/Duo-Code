@@ -10,7 +10,17 @@ export type IconName =
   | "profile"
   | "settings"
   | "heart"
-  | "alert";
+  | "alert"
+  | "check"
+  | "cross"
+  | "clock"
+  | "minus"
+  | "play"
+  | "send"
+  | "bulb"
+  | "reset"
+  | "eye"
+  | "back";
 
 const paths: Record<IconName, ReactNode> = {
   home: (
@@ -43,18 +53,48 @@ const paths: Record<IconName, ReactNode> = {
   settings: (
     <>
       <circle cx="12" cy="12" r="2.5" />
-      <path d="M12 3.5v3M12 17.5v3M3.5 12h3M17.5 12h3M6 6l2.1 2.1M15.9 15.9 18 18M18 6l-2.1 2.1M8.100 15.9 6 18" />
+      <path d="M12 3.5v3M12 17.5v3M3.5 12h3M17.5 12h3M6 6l2.1 2.1M15.9 15.9 18 18M18 6l-2.1 2.1M8.1 15.9 6 18" />
     </>
   ),
   heart: (
-    <path d="M12 20c-4.5-3.6-8-6.4-8-10.2A4.3 4.3 0 0 1 12 7a4.3 4.3 0 0 1 8 2.800c0 3.800-3.500 6.600-8 10.200Z" />
+    <path d="M12 20c-4.5-3.6-8-6.4-8-10.2A4.3 4.3 0 0 1 12 7a4.3 4.3 0 0 1 8 2.8c0 3.8-3.5 6.6-8 10.2Z" />
   ),
   alert: (
     <>
       <circle cx="12" cy="12" r="8.5" />
-      <path d="M12 7.500v5.500M12 16.300v.2" />
+      <path d="M12 7.5V13M12 16.3v.2" />
     </>
   ),
+  check: <path d="m5 12.5 4.5 4.5L19 7.5" />,
+  cross: <path d="m6.5 6.5 11 11M17.5 6.5l-11 11" />,
+  clock: (
+    <>
+      <circle cx="12" cy="12" r="8.5" />
+      <path d="M12 7.5V12l3 2" />
+    </>
+  ),
+  minus: <path d="M7 12h10" />,
+  play: <path d="M8 5.5v13l10.5-6.5L8 5.5Z" />,
+  send: <path d="M4 11.5 20 5l-6.5 15-2.5-6.5-7-2Z" />,
+  bulb: (
+    <>
+      <path d="M9.5 17.500h5M10.500 20.500h3" />
+      <path d="M8.500 14a5.500 5.500 0 1 1 7 0c-.6.5-1 1.200-1 2h-5c0-.8-.4-1.500-1-2Z" />
+    </>
+  ),
+  reset: (
+    <>
+      <path d="M5.500 12a6.500 6.500 0 1 0 2-4.700" />
+      <path d="M5 5v3.500h3.500" />
+    </>
+  ),
+  eye: (
+    <>
+      <path d="M3 12s3.500-6 9-6 9 6 9 6-3.500 6-9 6-9-6-9-6Z" />
+      <circle cx="12" cy="12" r="2.5" />
+    </>
+  ),
+  back: <path d="M14.500 6 8.500 12l6 6" />,
 };
 
 export function Icon({ name, size = 22 }: { name: IconName; size?: number }) {

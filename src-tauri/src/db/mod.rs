@@ -1,3 +1,4 @@
+pub mod problems;
 pub mod settings;
 
 use crate::error::AppResult;
@@ -11,6 +12,28 @@ const MIGRATIONS: &[&str] = &[
     "CREATE TABLE settings (
         key   TEXT PRIMARY KEY,
         value TEXT NOT NULL
+    ) STRICT;",
+    // 2 — submissões, rascunhos e desistências (spec 002)
+    "CREATE TABLE submissions (
+        id           INTEGER PRIMARY KEY,
+        problem_slug TEXT NOT NULL,
+        code         TEXT NOT NULL,
+        verdict      TEXT NOT NULL,
+        passed       INTEGER NOT NULL,
+        total        INTEGER NOT NULL,
+        duration_ms  INTEGER NOT NULL,
+        local_date   TEXT NOT NULL,
+        created_at   TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+    ) STRICT;
+    CREATE INDEX idx_submissions_problem ON submissions (problem_slug, verdict);
+    CREATE TABLE drafts (
+        problem_slug TEXT PRIMARY KEY,
+        code         TEXT NOT NULL,
+        updated_at   TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+    ) STRICT;
+    CREATE TABLE give_ups (
+        problem_slug TEXT PRIMARY KEY,
+        local_date   TEXT NOT NULL
     ) STRICT;",
 ];
 

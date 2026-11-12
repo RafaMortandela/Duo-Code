@@ -1,27 +1,54 @@
+//! Comandos expostos ao frontend. Só repassam para `Core`.
+
+use crate::core::{Core, ProblemDetail, ProblemSummary};
 use crate::db;
-use crate::error::{AppError, AppResult};
-use rusqlite::Connection;
-use std::sync::{Mutex, MutexGuard};
+use crate::error::AppResult;
+use crate::runner::RunOutcome;
 use tauri::State;
 
-pub struct AppState {
-    pub db: Mutex<Connection>,
-}
-
-impl AppState {
-    fn conn(&self) -> AppResult<MutexGuard<'_, Connection>> {
-        self.db
-            .lock()
-            .map_err(|_| AppError::new("state", "database lock poisoned"))
-    }
+/// Data local de hoje, `YYYY-MM-DD`. Único lugar que lê o relógio.
+fn today() -> String {
+    chrono::Local::now().format("%Y-%m-%d").to_string()
 }
 
 #[tauri::command]
-pub fn get_setting(state: State<'_, AppState>, key: String) -> AppResult<Option<String>> {
-    db::settings::get(&*state.conn()?, &key)
+pub fn get_setting(core: State<'_, Core>, key: String) -> AppResult<Option<String>> {
+    db::settings::get(&*core.conn()?, &key)
 }
 
 #[tauri::command]
-pub fn set_setting(state: State<'_, AppState>, key: String, value: String) -> AppResult<()> {
-    db::settings::set(&*state.conn()?, &key, &value)
+pub fn set_setting(core: State<'_, Core>, key: String, value: String) -> AppResult<()> {
+    db::settings::set(&*core.conn()?, &key, &value)
+}
+
+#[tauri::command]
+pub fn list_problems(core: State<'_, Core>) -> AppResult<Vec<ProblemSummary>> {
+    core.list_problems()
+}
+
+#[tauri::command]
+pub fn get_problem(core: State<'_, Core>, slug: String) -> AppResult<ProblemDetail> {
+    core.get_problem(&slug)
+}
+
+// `async`: roda fora da thread principal, para a interface não travar
+// enquanto o Python executa.
+#[tauri::command(async)]
+pub fn run_code(core: State<'_, Core>, slug: String, code: String) -> AppResult<RunOutcome> {
+    core.run_code(&slug, &code)
+}
+
+#[tauri::command(async)]
+pub fn submit_code(core: State<'_, Core>, slug: String, code: String) -> AppResult<RunOutcome> {
+    core.submit_code(&slug, &code, &today())
+}
+
+#[tauri::command]
+pub fn save_draft(core: State<'_, Core>, slug: String, code: String) -> AppResult<()> {
+    core.save_draft(&slug, &code)
+}
+
+#[tauri::command]
+pub fn get_solution(core: State<'_, Core>, slug: String, give_up: bool) -> AppResult<String> {
+    core.get_solution(&slug, give_up, &today())
 }

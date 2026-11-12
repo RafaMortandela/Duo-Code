@@ -1,8 +1,9 @@
 import { copy } from "../copy";
 
 // Quando a interface roda só no navegador (`npm run dev`, sem o Tauri),
-// os comandos de settings são atendidos com localStorage. Serve apenas para
-// conferir a interface; o app real sempre usa o backend Rust.
+// os comandos de settings são atendidos com localStorage e, em modo de
+// desenvolvimento, os de questão usam dados de demonstração. Serve apenas
+// para conferir a interface; o app real sempre usa o backend Rust.
 
 const PREFIX = "duo-code:setting:";
 
@@ -20,7 +21,11 @@ export async function browserFallback<T>(
   command: string,
   args: Record<string, unknown> = {},
 ): Promise<T> {
-  const handler = handlers[command];
+  let handler = handlers[command];
+  if (!handler && import.meta.env.DEV) {
+    const { devHandlers } = await import("./devFixtures");
+    handler = devHandlers[command];
+  }
   if (!handler) {
     throw { code: "unavailable", message: copy.errors.unavailable };
   }

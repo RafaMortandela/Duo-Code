@@ -3,6 +3,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useState,
   type ReactNode,
@@ -59,7 +60,9 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const resolved: ResolvedTheme =
     preference === "auto" ? (systemDark ? "dark" : "light") : preference;
 
-  useEffect(() => {
+  // Layout effect: o atributo precisa estar no <html> antes de os efeitos dos
+  // filhos rodarem (o editor lê os tokens do tema para montar suas cores).
+  useLayoutEffect(() => {
     document.documentElement.dataset.theme = resolved;
   }, [resolved]);
 

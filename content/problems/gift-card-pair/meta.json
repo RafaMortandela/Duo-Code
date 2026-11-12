@@ -1,0 +1,21 @@
+{
+  "id": "gift-card-pair",
+  "title": "Gift Card Pair",
+  "difficulty": "easy",
+  "unit": "arrays-hashing",
+  "tags": ["hash map", "one pass", "complement"],
+  "entrypoint": "gift_card_pair",
+  "params": [
+    { "name": "prices", "type": "list[int]" },
+    { "name": "balance", "type": "int" }
+  ],
+  "returns": "list[int]",
+  "comparator": "unordered",
+  "time_limit_ms": 2000,
+  "hints": [
+    "For each price, what exact value would its partner need to have?",
+    "A dictionary can answer \"have I already seen this value, and where?\" in constant time.",
+    "Walk the list once. Before storing the current price, check whether balance - price is already in the dictionary."
+  ],
+  "complexity": { "time": "O(n)", "space": "O(n)" }
+}

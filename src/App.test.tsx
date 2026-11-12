@@ -31,10 +31,16 @@ describe("navegação (001 CA-4)", () => {
     }
   });
 
-  it("rota de questão recebe o slug", () => {
-    window.location.hash = "#/problem/two-of-a-kind";
+  it("a trilha lista as questões e leva à tela da questão", async () => {
+    const user = userEvent.setup();
     render(<App />);
-    expect(screen.getByText("two-of-a-kind")).toBeTruthy();
+    await user.click(screen.getByRole("link", { name: copy.nav.trail }));
+    await user.click(await screen.findByRole("link", { name: /Demo: Add Two Numbers/ }));
+
+    expect(window.location.hash).toBe("#/problem/demo-add");
+    expect(
+      (await screen.findByRole("heading", { level: 1 })).textContent,
+    ).toBe("Demo: Add Two Numbers");
   });
 });
 

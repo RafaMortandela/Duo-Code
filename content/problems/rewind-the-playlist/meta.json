@@ -1,0 +1,18 @@
+{
+  "id": "rewind-the-playlist",
+  "title": "Rewind the Playlist",
+  "difficulty": "easy",
+  "unit": "linked-list",
+  "tags": ["linked list", "pointer reversal"],
+  "entrypoint": "rewind_playlist",
+  "params": [{ "name": "head", "type": "ListNode" }],
+  "returns": "ListNode",
+  "comparator": "exact",
+  "time_limit_ms": 2000,
+  "hints": [
+    "You only need to change where each node's next pointer goes.",
+    "Keep track of the node you just left (prev) while you move forward.",
+    "Before overwriting node.next with prev, save the original next in a temporary variable so you don't lose the rest of the list."
+  ],
+  "complexity": { "time": "O(n)", "space": "O(1)" }
+}

@@ -1,4 +1,3 @@
-import { useParams } from "react-router-dom";
 import { EmptyCard, PageShell } from "../components/PageShell";
 import { copy } from "../copy";
 import { useTheme, type ThemePreference } from "../theme/ThemeProvider";
@@ -7,23 +6,6 @@ export function HomePage() {
   return (
     <PageShell title={copy.home.title} subtitle={copy.home.subtitle}>
       <EmptyCard message={copy.home.empty} />
-    </PageShell>
-  );
-}
-
-export function TrailPage() {
-  return (
-    <PageShell title={copy.trail.title} subtitle={copy.trail.subtitle}>
-      <EmptyCard message={copy.trail.empty} />
-    </PageShell>
-  );
-}
-
-export function ProblemPage() {
-  const { slug } = useParams();
-  return (
-    <PageShell title={copy.problem.title} subtitle={slug}>
-      <EmptyCard message={copy.problem.empty} />
     </PageShell>
   );
 }
@@ -74,3 +56,6 @@ export function SettingsPage() {
     </PageShell>
   );
 }
+
+export { ProblemPage } from "./ProblemPage";
+export { TrailPage } from "./TrailPage";

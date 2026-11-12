@@ -16,6 +16,11 @@
   --success: #5ccfa0;
   --error: #d7264f;
   --border: #ffd3e2;
+  --selection: #ffd3e2;
+  --syntax-keyword: #c2185b;
+  --syntax-string: #1f8a63;
+  --syntax-number: #7b4fc9;
+  --success-text: #1f8a63;
 
   /* forma */
   --radius-field: 12px;
@@ -52,6 +57,12 @@
   --text: #ffe9f1;
   --text-muted: #c99bb0;
   --border: #4d2a3d;
+  --selection: #5a2c45;
+  --syntax-keyword: #ff7fb0;
+  --syntax-string: #5ccfa0;
+  --syntax-number: #c9a7f5;
+  --success-text: #5ccfa0;
+  --error: #ff6b8b;
   --shadow-soft: 0 6px 20px rgba(0, 0, 0, 0.35);
   --shadow-pop: 0 10px 30px rgba(0, 0, 0, 0.5);
 
