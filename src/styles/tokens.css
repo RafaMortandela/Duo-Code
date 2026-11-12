@@ -1,0 +1,59 @@
+/* Tokens do tema "IT girl" (spec 007). Único arquivo onde cores literais são permitidas. */
+
+:root {
+  /* cor */
+  --bg: #fff5f8;
+  --surface: #ffffff;
+  --surface-alt: #ffe4ec;
+  --primary: #ff5c9a;
+  --primary-strong: #e6337a;
+  --pastel: #ffb8d2;
+  --lavender: #c9a7f5;
+  --peach: #ffc9a8;
+  --text: #4a1f36;
+  --text-muted: #8a5a72;
+  --on-primary: #ffffff;
+  --success: #5ccfa0;
+  --error: #d7264f;
+  --border: #ffd3e2;
+
+  /* forma */
+  --radius-field: 12px;
+  --radius-card: 20px;
+  --radius-pill: 999px;
+  --shadow-soft: 0 6px 20px rgba(230, 51, 122, 0.1);
+  --shadow-pop: 0 10px 30px rgba(230, 51, 122, 0.18);
+
+  /* tipografia */
+  --font-ui: "Nunito Variable", "Nunito", system-ui, sans-serif;
+  --font-code: "JetBrains Mono Variable", "JetBrains Mono", ui-monospace, monospace;
+
+  /* espaço */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+
+  /* movimento */
+  --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --fast: 150ms;
+
+  color-scheme: light;
+}
+
+/* Modo escuro "rosé noir" */
+:root[data-theme="dark"] {
+  --bg: #1f0f18;
+  --surface: #2e1724;
+  --surface-alt: #3d1f30;
+  --text: #ffe9f1;
+  --text-muted: #c99bb0;
+  --border: #4d2a3d;
+  --shadow-soft: 0 6px 20px rgba(0, 0, 0, 0.35);
+  --shadow-pop: 0 10px 30px rgba(0, 0, 0, 0.5);
+
+  color-scheme: dark;
+}

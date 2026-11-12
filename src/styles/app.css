@@ -1,0 +1,186 @@
+/* Layout geral */
+.app {
+  display: grid;
+  grid-template-columns: 232px 1fr;
+  height: 100%;
+}
+
+.main {
+  overflow-y: auto;
+  padding: var(--space-6) var(--space-7);
+}
+
+/* Sidebar */
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  padding: var(--space-5) var(--space-4);
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 0 var(--space-2);
+}
+
+.brand-mark {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 14px;
+  background: var(--primary-strong);
+  color: var(--on-primary);
+  font-family: var(--font-code);
+  font-weight: 700;
+  font-size: 14px;
+  box-shadow: var(--shadow-soft);
+}
+
+.brand-name {
+  font-size: 20px;
+  font-weight: 800;
+}
+
+.nav {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.nav-link {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 10px var(--space-4);
+  border-radius: var(--radius-pill);
+  font-weight: 700;
+  color: var(--text-muted);
+  transition:
+    background var(--fast) var(--ease),
+    color var(--fast) var(--ease);
+}
+
+.nav-link svg {
+  flex: none;
+  color: var(--primary);
+}
+
+.nav-link:hover {
+  background: var(--surface-alt);
+  color: var(--text);
+}
+
+.nav-link[aria-current="page"] {
+  background: var(--surface-alt);
+  color: var(--text);
+  box-shadow: inset 0 0 0 1.5px var(--pastel);
+}
+
+.nav-link[aria-current="page"] svg {
+  color: var(--primary-strong);
+}
+
+/* Páginas */
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  max-width: 880px;
+}
+
+.page-subtitle {
+  margin-top: var(--space-1);
+  color: var(--text-muted);
+}
+
+.card {
+  padding: var(--space-5);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-soft);
+}
+
+.empty {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  color: var(--text-muted);
+}
+
+.empty svg {
+  flex: none;
+  color: var(--pastel);
+}
+
+.field-label {
+  font-weight: 800;
+  margin-bottom: var(--space-3);
+}
+
+/* Controle segmentado (pílulas) */
+.segmented {
+  display: inline-flex;
+  gap: var(--space-1);
+  padding: var(--space-1);
+  background: var(--surface-alt);
+  border-radius: var(--radius-pill);
+}
+
+.segmented button {
+  padding: 8px 18px;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  font-weight: 700;
+  color: var(--text-muted);
+  transition: background var(--fast) var(--ease);
+}
+
+.segmented button[aria-pressed="true"] {
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--shadow-soft);
+}
+
+/* Toasts */
+.toasts {
+  position: fixed;
+  right: var(--space-5);
+  bottom: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  z-index: 10;
+}
+
+.toast {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  max-width: 360px;
+  padding: var(--space-3) var(--space-4);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 5px solid var(--primary);
+  border-radius: var(--radius-field);
+  box-shadow: var(--shadow-pop);
+  font-weight: 600;
+}
+
+.toast[data-kind="error"] {
+  border-left-color: var(--error);
+}
+
+.toast svg {
+  flex: none;
+}
+
+.toast[data-kind="error"] svg {
+  color: var(--error);
+}
