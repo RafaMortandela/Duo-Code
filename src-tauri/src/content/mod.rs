@@ -88,9 +88,24 @@ pub struct Problem {
     pub tests: Vec<TestCase>,
 }
 
+/// Uma unidade da trilha, como em `content/units.json` (spec 004).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct Unit {
+    pub id: String,
+    pub title: String,
+    #[serde(default)]
+    pub description: String,
+    #[serde(default)]
+    pub icon: String,
+    /// Slugs, na ordem em que aparecem na unidade.
+    pub problems: Vec<String>,
+}
+
 #[derive(Debug, Default)]
 pub struct Loaded {
     pub problems: Vec<Problem>,
+    /// Trilha, em ordem.
+    pub units: Vec<Unit>,
     /// Questões ignoradas e o motivo (RF-1): vão para o log, não derrubam o app.
     pub warnings: Vec<String>,
 }
@@ -222,7 +237,73 @@ pub fn load_all(content_dir: &Path) -> Loaded {
             Err(e) => loaded.warnings.push(format!("{}: {e}", dir.display())),
         }
     }
+    let (units, warnings) = load_units(content_dir, &loaded.problems);
+    loaded.units = units;
+    loaded.warnings.extend(warnings);
     loaded
+}
+
+/// Unidades deduzidas do campo `unit` das questões, na ordem em que aparecem.
+/// Usado quando não há `units.json` utilizável.
+pub fn derive_units(problems: &[Problem]) -> Vec<Unit> {
+    let mut units: Vec<Unit> = Vec::new();
+    for p in problems {
+        match units.iter_mut().find(|u| u.id == p.unit) {
+            Some(u) => u.problems.push(p.slug.clone()),
+            None => units.push(Unit {
+                id: p.unit.clone(),
+                title: p.unit.clone(),
+                description: String::new(),
+                icon: String::new(),
+                problems: vec![p.slug.clone()],
+            }),
+        }
+    }
+    units
+}
+
+/// Lê `<content_dir>/units.json`. Referências que não existem, repetições e
+/// unidades duplicadas são ignoradas com aviso (RF-7); nada disso derruba o app.
+pub fn load_units(content_dir: &Path, problems: &[Problem]) -> (Vec<Unit>, Vec<String>) {
+    let path = content_dir.join("units.json");
+    let mut warnings = Vec::new();
+    let parsed: Result<Vec<Unit>, String> = fs::read_to_string(&path)
+        .map_err(|e| e.to_string())
+        .and_then(|text| serde_json::from_str(&text).map_err(|e| e.to_string()));
+    let raw = match parsed {
+        Ok(units) => units,
+        Err(e) => {
+            warnings.push(format!("{}: {e}; units derived from the problems", path.display()));
+            return (derive_units(problems), warnings);
+        }
+    };
+
+    let known: std::collections::HashSet<&str> = problems.iter().map(|p| p.slug.as_str()).collect();
+    let mut placed: std::collections::HashSet<String> = std::collections::HashSet::new();
+    let mut units: Vec<Unit> = Vec::new();
+    for mut unit in raw {
+        if units.iter().any(|u| u.id == unit.id) {
+            warnings.push(format!("units.json: duplicate unit '{}' ignored", unit.id));
+            continue;
+        }
+        let id = unit.id.clone();
+        unit.problems.retain(|slug| {
+            if !known.contains(slug.as_str()) {
+                warnings.push(format!("units.json: unit '{id}' references unknown problem '{slug}'"));
+                false
+            } else if !placed.insert(slug.clone()) {
+                warnings.push(format!("units.json: problem '{slug}' appears more than once"));
+                false
+            } else {
+                true
+            }
+        });
+        units.push(unit);
+    }
+    for p in problems.iter().filter(|p| !placed.contains(&p.slug)) {
+        warnings.push(format!("units.json: problem '{}' is not in any unit", p.slug));
+    }
+    (units, warnings)
 }
 
 #[cfg(test)]
@@ -275,6 +356,12 @@ pub mod testing {
         fs::write(dir.join("solution.py"), &p.solution).unwrap();
         dir
     }
+
+    /// Escreve um `units.json` coerente com as questões dadas (uma unidade por `unit`).
+    pub fn write_units_for(root: &Path, problems: &[Problem]) {
+        let units = derive_units(problems);
+        fs::write(root.join("units.json"), serde_json::to_string(&units).unwrap()).unwrap();
+    }
 }
 
 #[cfg(test)]
@@ -290,8 +377,10 @@ mod tests {
 
         let loaded = load_all(tmp.path());
 
-        assert!(loaded.warnings.is_empty(), "{:?}", loaded.warnings);
+        // único aviso: não há units.json, então as unidades são deduzidas
+        assert_eq!(loaded.warnings.len(), 1, "{:?}", loaded.warnings);
         assert_eq!(loaded.problems, vec![p]);
+        assert_eq!(loaded.units.len(), 1);
     }
 
     // CA-11: pasta sem tests.json → a questão não aparece e o resto carrega.
@@ -309,8 +398,7 @@ mod tests {
 
         assert_eq!(loaded.problems.len(), 1);
         assert_eq!(loaded.problems[0].slug, "add");
-        assert_eq!(loaded.warnings.len(), 1);
-        assert!(loaded.warnings[0].contains("tests.json"));
+        assert!(loaded.warnings.iter().any(|w| w.contains("tests.json")), "{:?}", loaded.warnings);
     }
 
     #[test]
@@ -347,7 +435,8 @@ mod tests {
         let tmp = tempfile::tempdir().unwrap();
         let loaded = load_all(&tmp.path().join("nope"));
         assert!(loaded.problems.is_empty());
-        assert_eq!(loaded.warnings.len(), 1);
+        assert!(loaded.units.is_empty());
+        assert!(!loaded.warnings.is_empty());
     }
 
     #[test]
@@ -377,6 +466,7 @@ mod tests {
     fn validator_script_passes_good_content_and_fails_broken_content() {
         let tmp = tempfile::tempdir().unwrap();
         write_problem(tmp.path(), &add_problem());
+        write_units_for(tmp.path(), &[add_problem()]);
         let out = validator(tmp.path());
         assert!(out.status.success(), "{}", String::from_utf8_lossy(&out.stdout));
 
@@ -384,9 +474,45 @@ mod tests {
         wrong.slug = "wrong".into();
         wrong.solution = "def add(a, b):\n    return a - b\n".into();
         write_problem(tmp.path(), &wrong);
+        write_units_for(tmp.path(), &[add_problem(), wrong.clone()]);
         let out = validator(tmp.path());
         assert_eq!(out.status.code(), Some(1));
         assert!(String::from_utf8_lossy(&out.stdout).contains("FAIL wrong"));
+    }
+
+    // 004 RF-7: o validador acusa trilha incoerente com as questões.
+    #[test]
+    fn validator_script_checks_the_units_file() {
+        let tmp = tempfile::tempdir().unwrap();
+        write_problem(tmp.path(), &add_problem());
+
+        // sem units.json
+        let out = validator(tmp.path());
+        assert_eq!(out.status.code(), Some(1));
+        assert!(String::from_utf8_lossy(&out.stdout).contains("units.json is missing"));
+
+        // referência inexistente, questão órfã e unidade diferente da declarada
+        fs::write(
+            tmp.path().join("units.json"),
+            serde_json::json!([
+                {"id": "other", "title": "Other", "problems": ["ghost"]},
+            ])
+            .to_string(),
+        )
+        .unwrap();
+        let out = validator(tmp.path());
+        let text = String::from_utf8_lossy(&out.stdout).to_string();
+        assert_eq!(out.status.code(), Some(1));
+        assert!(text.contains("unknown problem 'ghost'"), "{text}");
+        assert!(text.contains("'add' is not in any unit"), "{text}");
+
+        fs::write(
+            tmp.path().join("units.json"),
+            serde_json::json!([{"id": "other", "title": "Other", "problems": ["add"]}]).to_string(),
+        )
+        .unwrap();
+        let text = String::from_utf8_lossy(&validator(tmp.path()).stdout).to_string();
+        assert!(text.contains("its meta.json says 'warmup'"), "{text}");
     }
 
     // Um starter que já resolve a questão também reprova.
@@ -401,6 +527,82 @@ mod tests {
         assert!(String::from_utf8_lossy(&out.stdout).contains("starter.py"));
     }
 
+    fn three() -> Vec<Problem> {
+        ["p1", "p2", "p3"]
+            .iter()
+            .map(|slug| {
+                let mut p = add_problem();
+                p.slug = slug.to_string();
+                p.unit = if *slug == "p3" { "second".into() } else { "first".into() };
+                p
+            })
+            .collect()
+    }
+
+    fn write_units(root: &Path, json: serde_json::Value) {
+        fs::create_dir_all(root).unwrap();
+        fs::write(root.join("units.json"), json.to_string()).unwrap();
+    }
+
+    #[test]
+    fn units_file_defines_order_and_metadata() {
+        let tmp = tempfile::tempdir().unwrap();
+        write_units(tmp.path(), serde_json::json!([
+            {"id": "second", "title": "Second", "description": "d", "icon": "stack", "problems": ["p3"]},
+            {"id": "first", "title": "First", "problems": ["p2", "p1"]},
+        ]));
+        let (units, warnings) = load_units(tmp.path(), &three());
+        assert!(warnings.is_empty(), "{warnings:?}");
+        assert_eq!(units.len(), 2);
+        assert_eq!((units[0].id.as_str(), units[0].icon.as_str()), ("second", "stack"));
+        assert_eq!(units[1].problems, vec!["p2", "p1"]);
+    }
+
+    // CA-8: acrescentar uma unidade ao arquivo a faz aparecer, sem mudar código.
+    #[test]
+    fn adding_a_unit_to_the_file_makes_it_appear() {
+        let tmp = tempfile::tempdir().unwrap();
+        write_units(tmp.path(), serde_json::json!([
+            {"id": "first", "title": "First", "problems": ["p1", "p2"]},
+            {"id": "second", "title": "Second", "problems": ["p3"]},
+            {"id": "brand-new", "title": "Brand New", "problems": []},
+        ]));
+        let (units, warnings) = load_units(tmp.path(), &three());
+        assert!(warnings.is_empty(), "{warnings:?}");
+        assert_eq!(units.last().unwrap().title, "Brand New");
+    }
+
+    // RF-7
+    #[test]
+    fn bad_references_are_dropped_with_warnings() {
+        let tmp = tempfile::tempdir().unwrap();
+        write_units(tmp.path(), serde_json::json!([
+            {"id": "first", "title": "First", "problems": ["p1", "ghost"]},
+            {"id": "second", "title": "Second", "problems": ["p1", "p3"]},
+            {"id": "first", "title": "Again", "problems": ["p2"]},
+        ]));
+        let (units, warnings) = load_units(tmp.path(), &three());
+        assert_eq!(units.len(), 2);
+        assert_eq!(units[0].problems, vec!["p1"]);
+        assert_eq!(units[1].problems, vec!["p3"]);
+        let all = warnings.join("\n");
+        assert!(all.contains("unknown problem 'ghost'"), "{all}");
+        assert!(all.contains("'p1' appears more than once"), "{all}");
+        assert!(all.contains("duplicate unit 'first'"), "{all}");
+        assert!(all.contains("'p2' is not in any unit"), "{all}");
+    }
+
+    #[test]
+    fn without_a_units_file_units_come_from_the_problems() {
+        let tmp = tempfile::tempdir().unwrap();
+        let (units, warnings) = load_units(tmp.path(), &three());
+        assert_eq!(warnings.len(), 1);
+        assert_eq!(units.len(), 2);
+        assert_eq!(units[0].id, "first");
+        assert_eq!(units[0].problems, vec!["p1", "p2"]);
+        assert_eq!(units[1].problems, vec!["p3"]);
+    }
+
     // O conteúdo real do repositório precisa carregar sem nenhuma questão ignorada.
     #[test]
     fn repository_content_loads_cleanly() {
@@ -408,5 +610,14 @@ mod tests {
         let loaded = load_all(&dir);
         assert!(loaded.warnings.is_empty(), "{:#?}", loaded.warnings);
         assert!(!loaded.problems.is_empty());
+        // toda questão está em exatamente uma unidade, e na unidade que ela declara
+        let placed: usize = loaded.units.iter().map(|u| u.problems.len()).sum();
+        assert_eq!(placed, loaded.problems.len());
+        for unit in &loaded.units {
+            for slug in &unit.problems {
+                let p = loaded.problems.iter().find(|p| &p.slug == slug).unwrap();
+                assert_eq!(p.unit, unit.id, "{slug}");
+            }
+        }
     }
 }

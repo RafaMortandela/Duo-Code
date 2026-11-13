@@ -62,8 +62,8 @@ export function HomePage() {
           ) : (
             <>
               <p className="streak-message">{copy.home.allDone}</p>
-              <Link to="/trail" className="btn btn-secondary">
-                {copy.home.seeTrail}
+              <Link to="/review" className="btn btn-secondary">
+                {copy.home.goReview}
               </Link>
             </>
           )}

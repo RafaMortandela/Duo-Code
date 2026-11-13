@@ -28,8 +28,8 @@ export const copy = {
     best: (n: number) => `Recorde: ${n}`,
     next: "Próxima questão",
     nextCta: "Bora resolver",
-    allDone: "Você resolveu tudo que tinha. Ícone! 👑",
-    seeTrail: "Ver a trilha",
+    allDone: "Você concluiu a trilha inteira. Ícone! 👑 Agora é manter afiado na revisão.",
+    goReview: "Ir para a revisão",
   },
   level: {
     label: (n: number) => `Nível ${n}`,
@@ -47,6 +47,7 @@ export const copy = {
     streakUp: "Streak de hoje garantido 🔥",
     levelUp: (n: number) => `Subiu de nível! Agora você é nível ${n} 👑`,
     achievement: "Conquista destravada",
+    unitUnlocked: "Unidade liberada",
     already_solved: "Você já tinha resolvido esta questão: reenviar não rende XP nem conta para o streak.",
     gave_up: "Como você viu a solução antes, esta não rende XP. Ela ainda pode voltar na revisão.",
   },
@@ -68,8 +69,20 @@ export const copy = {
   trail: {
     title: "Trilha",
     subtitle: "Do básico ao ícone, uma unidade de cada vez.",
-    empty: "Nenhuma questão encontrada.",
-    loading: "Carregando as questões…",
+    empty: "Nenhuma unidade encontrada.",
+    loading: "Carregando a trilha…",
+    separator: "·",
+    progress: (solved: number, total: number) => `${solved}/${total}`,
+    state: {
+      locked: "Bloqueada",
+      unlocked: "Liberada",
+      in_progress: "Em andamento",
+      completed: "Concluída",
+    },
+    blocked: (remaining: number, unit: string) =>
+      remaining === 1
+        ? `Resolva mais 1 questão de ${unit} para liberar esta unidade.`
+        : `Resolva mais ${remaining} questões de ${unit} para liberar esta unidade.`,
   },
   units: {
     "arrays-hashing": "Arrays & Hashing",

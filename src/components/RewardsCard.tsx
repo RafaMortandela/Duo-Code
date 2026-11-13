@@ -3,11 +3,28 @@ import { copy } from "../copy";
 import { Icon } from "./Icon";
 
 /** Resumo de recompensas de uma submissão aceita (spec 003 RF-6). */
+function UnitsUnlocked({ titles }: { titles: string[] }) {
+  return (
+    <>
+      {titles.map((title) => (
+        <p key={title} className="reward-highlight" data-kind="unit">
+          <Icon name="trail" size={22} />
+          <span>
+            <span className="reward-eyebrow">{copy.rewards.unitUnlocked}</span>
+            <strong>{title}</strong>
+          </span>
+        </p>
+      ))}
+    </>
+  );
+}
+
 export function RewardsCard({ rewards }: { rewards: Rewards }) {
   if (rewards.reason !== "first_solve") {
     return (
-      <div className="rewards" data-muted="true">
+      <div className="rewards" aria-label={copy.rewards.title}>
         <p className="muted">{copy.rewards[rewards.reason]}</p>
+        <UnitsUnlocked titles={rewards.units_unlocked} />
       </div>
     );
   }
@@ -41,6 +58,7 @@ export function RewardsCard({ rewards }: { rewards: Rewards }) {
           </span>
         </p>
       ))}
+      <UnitsUnlocked titles={rewards.units_unlocked} />
     </div>
   );
 }

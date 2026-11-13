@@ -1,6 +1,6 @@
 //! Comandos expostos ao frontend. Só repassam para `Core`.
 
-use crate::core::{Core, ProblemDetail, ProblemSummary, Progress, SubmitResult};
+use crate::core::{Core, ProblemDetail, ProblemSummary, Progress, SubmitResult, TrailUnit};
 use crate::db;
 use crate::error::AppResult;
 use crate::runner::RunOutcome;
@@ -56,4 +56,9 @@ pub fn get_solution(core: State<'_, Core>, slug: String, give_up: bool) -> AppRe
 #[tauri::command]
 pub fn get_progress(core: State<'_, Core>) -> AppResult<Progress> {
     core.progress(&today())
+}
+
+#[tauri::command]
+pub fn get_trail(core: State<'_, Core>) -> AppResult<Vec<TrailUnit>> {
+    core.trail(&today())
 }

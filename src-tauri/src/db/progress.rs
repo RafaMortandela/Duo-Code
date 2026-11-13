@@ -94,3 +94,22 @@ pub fn unlock_achievement(conn: &Connection, id: &str, local_date: &str) -> AppR
     )?;
     Ok(())
 }
+
+/// Unidades da trilha que já estiveram liberadas (spec 004).
+pub fn unlocked_units(conn: &Connection) -> AppResult<HashSet<String>> {
+    let mut stmt = conn.prepare("SELECT unit_id FROM units_unlocked")?;
+    let rows = stmt.query_map([], |r| r.get::<_, String>(0))?;
+    let mut ids = HashSet::new();
+    for row in rows {
+        ids.insert(row?);
+    }
+    Ok(ids)
+}
+
+pub fn keep_unit_unlocked(conn: &Connection, unit_id: &str, local_date: &str) -> AppResult<()> {
+    conn.execute(
+        "INSERT OR IGNORE INTO units_unlocked (unit_id, local_date) VALUES (?1, ?2)",
+        [unit_id, local_date],
+    )?;
+    Ok(())
+}

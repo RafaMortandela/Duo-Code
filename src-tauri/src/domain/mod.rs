@@ -2,4 +2,5 @@
 
 pub mod achievements;
 pub mod streak;
+pub mod trail;
 pub mod xp;

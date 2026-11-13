@@ -29,6 +29,8 @@ export type Rewards = {
   streak: Streak;
   /** Ids das conquistas destravadas por esta submissão. */
   achievements: string[];
+  /** Títulos das unidades da trilha que abriram com esta submissão. */
+  units_unlocked: string[];
 };
 
 export type Progress = {

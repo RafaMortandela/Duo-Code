@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Markdown from "react-markdown";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { toApiError } from "../api/client";
 import {
   getProblem,
@@ -26,6 +26,7 @@ const DRAFT_DELAY_MS = 600;
 export function ProblemPage() {
   const { slug = "" } = useParams();
   const toast = useToast();
+  const navigate = useNavigate();
   const { refresh: refreshProgress } = useProgress();
 
   const [problem, setProblem] = useState<ProblemDetail | null>(null);
@@ -77,12 +78,19 @@ export function ProblemPage() {
         setResetKey((k) => k + 1);
         setProblem(p);
       })
-      .catch(reportError);
+      .catch((e) => {
+        // Unidade bloqueada: volta para a trilha, que explica o que falta (004 CA-5).
+        if (toApiError(e).code === "unit_locked") {
+          if (!cancelled) navigate("/trail", { replace: true, state: { lockedSlug: slug } });
+          return;
+        }
+        reportError(e);
+      });
     return () => {
       cancelled = true;
       flushDraft();
     };
-  }, [slug, reportError, flushDraft]);
+  }, [slug, reportError, flushDraft, navigate]);
 
   const onChange = useCallback(
     (next: string) => {

@@ -36,7 +36,7 @@ pub fn run() {
                 eprintln!("[content] skipped: {warning}");
             }
 
-            app.manage(core::Core::new(conn, loaded.problems));
+            app.manage(core::Core::with_units(conn, loaded.problems, loaded.units));
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -49,6 +49,7 @@ pub fn run() {
             commands::save_draft,
             commands::get_solution,
             commands::get_progress,
+            commands::get_trail,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

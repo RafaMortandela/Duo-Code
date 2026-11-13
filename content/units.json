@@ -1,0 +1,23 @@
+[
+  {
+    "id": "arrays-hashing",
+    "title": "Arrays & Hashing",
+    "description": "Count, look up and group in constant time with dictionaries and sets.",
+    "icon": "hash",
+    "problems": ["gift-card-pair"]
+  },
+  {
+    "id": "stack",
+    "title": "Stack",
+    "description": "Last in, first out: matching pairs, undo histories and monotonic stacks.",
+    "icon": "stack",
+    "problems": ["balanced-brackets"]
+  },
+  {
+    "id": "linked-list",
+    "title": "Linked List",
+    "description": "Rewire pointers without losing the rest of the chain.",
+    "icon": "link",
+    "problems": ["rewind-the-playlist"]
+  }
+]

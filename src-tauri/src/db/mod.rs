@@ -52,6 +52,11 @@ const MIGRATIONS: &[&str] = &[
         id         TEXT PRIMARY KEY,
         local_date TEXT NOT NULL
     ) STRICT;",
+    // 4 — unidades já liberadas: nunca voltam a ficar bloqueadas (spec 004)
+    "CREATE TABLE units_unlocked (
+        unit_id    TEXT PRIMARY KEY,
+        local_date TEXT NOT NULL
+    ) STRICT;",
 ];
 
 /// Abre (criando se preciso) o banco em `path` e aplica as migrações pendentes.

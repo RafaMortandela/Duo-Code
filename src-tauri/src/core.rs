@@ -1,9 +1,10 @@
 //! Casos de uso do app, independentes do Tauri (testáveis sem janela).
 
-use crate::content::{Complexity, Difficulty, Param, Problem, TestCase};
+use crate::content::{Complexity, Difficulty, Param, Problem, TestCase, Unit};
 use crate::db;
 use crate::domain::achievements::{self, AchievementState};
 use crate::domain::streak::{streak, Streak};
+use crate::domain::trail::{self, UnitDef, UnitProgress, UnitState};
 use crate::domain::xp::{level_info, xp_for, LevelInfo, XpEvent};
 use crate::error::{AppError, AppResult};
 use crate::runner::{self, RunOutcome, Verdict};
@@ -35,6 +36,31 @@ pub struct Rewards {
     pub streak: Streak,
     /// Ids das conquistas destravadas por esta submissão.
     pub achievements: Vec<String>,
+    /// Títulos das unidades da trilha que abriram com esta submissão (004 RF-6).
+    pub units_unlocked: Vec<String>,
+}
+
+/// O que falta para uma unidade bloqueada abrir (004 RF-4).
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct TrailBlocker {
+    pub unit_id: String,
+    pub unit_title: String,
+    pub remaining: u32,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct TrailUnit {
+    pub id: String,
+    pub title: String,
+    pub description: String,
+    pub icon: String,
+    pub state: UnitState,
+    pub solved: u32,
+    pub total: u32,
+    pub blocked_by: Option<TrailBlocker>,
+    /// É a unidade da próxima questão sugerida.
+    pub current: bool,
+    pub problems: Vec<ProblemSummary>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize)]
@@ -119,13 +145,114 @@ pub struct ProblemDetail {
 pub struct Core {
     db: Mutex<Connection>,
     problems: Vec<Problem>,
+    /// Trilha, em ordem. Vazia = sem trilha: toda questão fica acessível.
+    units: Vec<Unit>,
+    unit_defs: Vec<UnitDef>,
     /// Interpretador a usar; `None` procura no PATH a cada execução.
     python: Option<String>,
 }
 
 impl Core {
+    /// Sem trilha: nenhuma questão é bloqueada.
     pub fn new(conn: Connection, problems: Vec<Problem>) -> Self {
-        Self { db: Mutex::new(conn), problems, python: None }
+        Self::with_units(conn, problems, Vec::new())
+    }
+
+    pub fn with_units(conn: Connection, problems: Vec<Problem>, units: Vec<Unit>) -> Self {
+        let unit_defs = units
+            .iter()
+            .map(|u| UnitDef { id: u.id.clone(), problems: u.problems.clone() })
+            .collect();
+        Self { db: Mutex::new(conn), problems, units, unit_defs, python: None }
+    }
+
+    /// Questões com submissão aceita: é o que conta como "resolvida" na trilha.
+    fn accepted_slugs(conn: &Connection) -> AppResult<HashSet<String>> {
+        Ok(db::problems::attempt_map(conn)?
+            .into_iter()
+            .filter(|(_, solved)| *solved)
+            .map(|(slug, _)| slug)
+            .collect())
+    }
+
+    fn trail_progress(&self, conn: &Connection) -> AppResult<(Vec<UnitProgress>, HashSet<String>)> {
+        let solved = Self::accepted_slugs(conn)?;
+        let kept = db::progress::unlocked_units(conn)?;
+        Ok((trail::trail_state(&self.unit_defs, &solved, &kept), solved))
+    }
+
+    /// Grava as unidades que estão liberadas, para nunca voltarem a bloquear.
+    fn keep_unlocked(&self, conn: &Connection, progress: &[UnitProgress], today: &str) -> AppResult<()> {
+        for (unit, p) in self.units.iter().zip(progress) {
+            if p.state != UnitState::Locked {
+                db::progress::keep_unit_unlocked(conn, &unit.id, today)?;
+            }
+        }
+        Ok(())
+    }
+
+    /// Erro `unit_locked` se a questão pertence a uma unidade bloqueada (004 CA-5).
+    fn ensure_unlocked(&self, conn: &Connection, slug: &str) -> AppResult<()> {
+        let Some(index) = self.units.iter().position(|u| u.problems.iter().any(|s| s == slug)) else {
+            return Ok(()); // fora da trilha
+        };
+        let (progress, _) = self.trail_progress(conn)?;
+        if progress[index].state == UnitState::Locked {
+            return Err(AppError::new(
+                "unit_locked",
+                format!("unit '{}' is still locked", self.units[index].id),
+            ));
+        }
+        Ok(())
+    }
+
+    fn blocker(&self, progress: &UnitProgress) -> Option<TrailBlocker> {
+        progress.blocked_by.map(|b| TrailBlocker {
+            unit_id: self.units[b.unit].id.clone(),
+            unit_title: self.units[b.unit].title.clone(),
+            remaining: b.remaining,
+        })
+    }
+
+    /// A trilha inteira, com o estado de cada unidade e questão (004 RF-1 a RF-4).
+    pub fn trail(&self, today: &str) -> AppResult<Vec<TrailUnit>> {
+        db::progress::parse_date(today)?;
+        let conn = self.conn()?;
+        let (progress, solved) = self.trail_progress(&conn)?;
+        self.keep_unlocked(&conn, &progress, today)?;
+        let attempts = db::problems::attempt_map(&conn)?;
+        let suggested = trail::suggest(&self.unit_defs, &progress, &solved);
+
+        Ok(self
+            .units
+            .iter()
+            .zip(&progress)
+            .map(|(unit, p)| TrailUnit {
+                id: unit.id.clone(),
+                title: unit.title.clone(),
+                description: unit.description.clone(),
+                icon: unit.icon.clone(),
+                state: p.state,
+                solved: p.solved,
+                total: p.total,
+                blocked_by: self.blocker(p),
+                current: suggested.is_some_and(|s| unit.problems.iter().any(|x| x == s)),
+                problems: unit
+                    .problems
+                    .iter()
+                    .filter_map(|slug| self.problems.iter().find(|q| &q.slug == slug))
+                    .map(|q| Self::summary(q, Self::status_of(&attempts, &q.slug)))
+                    .collect(),
+            })
+            .collect())
+    }
+
+    fn status_of(attempts: &HashMap<String, bool>, slug: &str) -> ProblemStatus {
+        match attempts.get(slug) {
+            Some(true) => ProblemStatus::Solved,
+            Some(false) => ProblemStatus::Attempted,
+            None => ProblemStatus::New,
+        }
     }
 
     pub fn conn(&self) -> AppResult<MutexGuard<'_, Connection>> {
@@ -164,20 +291,14 @@ impl Core {
         Ok(self
             .problems
             .iter()
-            .map(|p| {
-                let status = match attempts.get(&p.slug) {
-                    Some(true) => ProblemStatus::Solved,
-                    Some(false) => ProblemStatus::Attempted,
-                    None => ProblemStatus::New,
-                };
-                Self::summary(p, status)
-            })
+            .map(|p| Self::summary(p, Self::status_of(&attempts, &p.slug)))
             .collect())
     }
 
     pub fn get_problem(&self, slug: &str) -> AppResult<ProblemDetail> {
         let p = self.problem(slug)?;
         let conn = self.conn()?;
+        self.ensure_unlocked(&conn, slug)?;
         let solved = db::problems::has_accepted(&conn, slug)?;
         let status = if solved {
             ProblemStatus::Solved
@@ -202,6 +323,7 @@ impl Core {
     /// "Executar": só os testes visíveis, sem registrar nada (RF-3, CA-9).
     pub fn run_code(&self, slug: &str, code: &str) -> AppResult<RunOutcome> {
         let p = self.problem(slug)?;
+        self.ensure_unlocked(&*self.conn()?, slug)?;
         let tests: Vec<&TestCase> = p.tests.iter().filter(|t| !t.hidden).collect();
         runner::run(&self.python()?, p, code, &tests)
     }
@@ -245,12 +367,14 @@ impl Core {
     pub fn submit_code(&self, slug: &str, code: &str, today: &str) -> AppResult<SubmitResult> {
         let p = self.problem(slug)?;
         let date = db::progress::parse_date(today)?;
+        self.ensure_unlocked(&*self.conn()?, slug)?;
         let tests: Vec<&TestCase> = p.tests.iter().collect();
         // A trava do banco só é pega depois da execução, para não segurar o app.
         let outcome = runner::run(&self.python()?, p, code, &tests)?;
 
         let mut conn = self.conn()?;
         let tx = conn.transaction()?;
+        let (trail_before, _) = self.trail_progress(&tx)?;
         let first_submission = db::problems::count_submissions(&tx, slug)? == 0;
         db::problems::insert_submission(
             &tx,
@@ -304,6 +428,17 @@ impl Core {
                     unlocked.push(id.to_string());
                 }
             }
+            let (trail_after, _) = self.trail_progress(&tx)?;
+            self.keep_unlocked(&tx, &trail_after, today)?;
+            let units_unlocked = self
+                .units
+                .iter()
+                .zip(trail_before.iter().zip(&trail_after))
+                .filter(|(_, (before, after))| {
+                    before.state == UnitState::Locked && after.state != UnitState::Locked
+                })
+                .map(|(unit, _)| unit.title.clone())
+                .collect();
             Some(Rewards {
                 reason,
                 xp_gained,
@@ -312,6 +447,7 @@ impl Core {
                 streak_before: streak_before.current,
                 streak,
                 achievements: unlocked,
+                units_unlocked,
             })
         } else {
             None
@@ -345,21 +481,21 @@ impl Core {
             })
             .collect();
 
-        // Próxima sugestão: a primeira questão ainda não resolvida.
-        // A spec 004 troca isto pela ordem da trilha.
+        // Próxima sugestão: segue a trilha (004 RF-5). Sem trilha, é a primeira
+        // questão ainda não resolvida.
         let attempts = db::problems::attempt_map(&conn)?;
-        let next_problem = self
-            .problems
-            .iter()
-            .find(|p| attempts.get(&p.slug) != Some(&true))
-            .map(|p| {
-                let status = if attempts.contains_key(&p.slug) {
-                    ProblemStatus::Attempted
-                } else {
-                    ProblemStatus::New
-                };
-                Self::summary(p, status)
-            });
+        let next_slug: Option<&str> = if self.units.is_empty() {
+            self.problems
+                .iter()
+                .find(|p| attempts.get(&p.slug) != Some(&true))
+                .map(|p| p.slug.as_str())
+        } else {
+            let (trail_progress, solved) = self.trail_progress(&conn)?;
+            trail::suggest(&self.unit_defs, &trail_progress, &solved)
+        };
+        let next_problem = next_slug
+            .and_then(|slug| self.problems.iter().find(|p| p.slug == slug))
+            .map(|p| Self::summary(p, Self::status_of(&attempts, &p.slug)));
 
         Ok(Progress {
             today: today.to_string(),
@@ -383,6 +519,7 @@ impl Core {
     pub fn get_solution(&self, slug: &str, give_up: bool, today: &str) -> AppResult<String> {
         let p = self.problem(slug)?;
         let conn = self.conn()?;
+        self.ensure_unlocked(&conn, slug)?;
         let unlocked =
             db::problems::has_accepted(&conn, slug)? || db::problems::has_given_up(&conn, slug)?;
         if !unlocked {
@@ -806,5 +943,183 @@ mod tests {
     fn invalid_date_is_rejected() {
         let (_d, core) = game();
         assert_eq!(core.progress("12/11/2026").unwrap_err().code, "invalid_date");
+    }
+
+    // ---------- spec 004 ----------
+
+    use crate::content::Unit;
+
+    fn unit(id: &str, problems: &[&str]) -> Unit {
+        Unit {
+            id: id.into(),
+            title: id.to_uppercase(),
+            description: String::new(),
+            icon: String::new(),
+            problems: problems.iter().map(|s| s.to_string()).collect(),
+        }
+    }
+
+    /// Trilha a (a1 a2 a3) → b (b1 b2 b3) → c (c1)
+    fn trail_core_at(path: &std::path::Path) -> Core {
+        let slugs = ["a1", "a2", "a3", "b1", "b2", "b3", "c1"];
+        let problems = slugs
+            .iter()
+            .map(|s| variant(s, Difficulty::Easy, &s[..1]))
+            .collect();
+        let units = vec![
+            unit("a", &["a1", "a2", "a3"]),
+            unit("b", &["b1", "b2", "b3"]),
+            unit("c", &["c1"]),
+        ];
+        Core::with_units(db::open(path).unwrap(), problems, units)
+    }
+
+    fn trail_core() -> (tempfile::TempDir, Core) {
+        let dir = tempfile::tempdir().unwrap();
+        let core = trail_core_at(&dir.path().join("t.db"));
+        (dir, core)
+    }
+
+    fn unit_states(core: &Core) -> Vec<UnitState> {
+        core.trail(TODAY).unwrap().iter().map(|u| u.state).collect()
+    }
+
+    use UnitState::{Completed, InProgress, Locked, Unlocked};
+
+    #[test]
+    fn trail_lists_units_in_order_with_their_problems() {
+        let (_d, core) = trail_core();
+        let trail = core.trail(TODAY).unwrap();
+        assert_eq!(trail.iter().map(|u| u.id.as_str()).collect::<Vec<_>>(), vec!["a", "b", "c"]);
+        assert_eq!(unit_states(&core), vec![Unlocked, Locked, Locked]);
+        assert_eq!((trail[0].solved, trail[0].total), (0, 3));
+        assert_eq!(
+            trail[0].problems.iter().map(|p| p.slug.as_str()).collect::<Vec<_>>(),
+            vec!["a1", "a2", "a3"]
+        );
+        assert!(trail[0].current && !trail[1].current);
+        // RF-4: a unidade bloqueada diz o que falta
+        assert_eq!(
+            trail[1].blocked_by,
+            Some(TrailBlocker { unit_id: "a".into(), unit_title: "A".into(), remaining: 2 })
+        );
+    }
+
+    #[test]
+    fn solving_moves_units_through_their_states() {
+        let (_d, core) = trail_core();
+        solve(&core, "a1", TODAY);
+        assert_eq!(unit_states(&core), vec![InProgress, Locked, Locked]);
+        assert_eq!(core.trail(TODAY).unwrap()[1].blocked_by.as_ref().unwrap().remaining, 1);
+
+        solve(&core, "a2", TODAY);
+        assert_eq!(unit_states(&core), vec![InProgress, Unlocked, Locked]);
+
+        solve(&core, "a3", TODAY);
+        assert_eq!(unit_states(&core), vec![Completed, Unlocked, Locked]);
+    }
+
+    // RF-6
+    #[test]
+    fn rewards_announce_the_unit_that_just_opened() {
+        let (_d, core) = trail_core();
+        assert!(solve(&core, "a1", TODAY).units_unlocked.is_empty());
+        assert_eq!(solve(&core, "a2", TODAY).units_unlocked, vec!["B".to_string()]);
+        // já estava liberada: não anuncia de novo
+        assert!(solve(&core, "a3", TODAY).units_unlocked.is_empty());
+    }
+
+    // CA-5
+    #[test]
+    fn problems_of_a_locked_unit_cannot_be_opened_run_or_submitted() {
+        let (_d, core) = trail_core();
+        let code = add_problem().solution;
+        assert_eq!(core.get_problem("b1").unwrap_err().code, "unit_locked");
+        assert_eq!(core.run_code("b1", &code).unwrap_err().code, "unit_locked");
+        assert_eq!(core.submit_code("b1", &code, TODAY).unwrap_err().code, "unit_locked");
+        assert_eq!(core.get_solution("b1", true, TODAY).unwrap_err().code, "unit_locked");
+        assert_eq!(submissions_of(&core, "b1"), 0);
+
+        solve(&core, "a1", TODAY);
+        solve(&core, "a2", TODAY);
+        assert!(core.get_problem("b1").is_ok());
+        assert_eq!(core.get_problem("c1").unwrap_err().code, "unit_locked");
+    }
+
+    fn submissions_of(core: &Core, slug: &str) -> i64 {
+        db::problems::count_submissions(&core.conn().unwrap(), slug).unwrap()
+    }
+
+    // CA-6
+    #[test]
+    fn home_suggestion_follows_the_trail() {
+        let (_d, core) = trail_core();
+        let next = |c: &Core| c.progress(TODAY).unwrap().next_problem.map(|p| p.slug);
+        assert_eq!(next(&core).as_deref(), Some("a1"));
+        solve(&core, "a1", TODAY);
+        assert_eq!(next(&core).as_deref(), Some("a2"));
+        solve(&core, "a2", TODAY);
+        assert_eq!(next(&core).as_deref(), Some("b1"));
+        assert!(core.trail(TODAY).unwrap()[1].current);
+    }
+
+    // CA-7
+    #[test]
+    fn no_suggestion_once_the_whole_trail_is_completed() {
+        let (_d, core) = trail_core();
+        for slug in ["a1", "a2", "a3", "b1", "b2", "b3", "c1"] {
+            solve(&core, slug, TODAY);
+        }
+        assert_eq!(unit_states(&core), vec![Completed, Completed, Completed]);
+        assert!(core.progress(TODAY).unwrap().next_problem.is_none());
+        assert!(core.trail(TODAY).unwrap().iter().all(|u| !u.current));
+    }
+
+    // Quem desistiu não fica presa: a aceitação posterior conta para a trilha.
+    #[test]
+    fn solving_after_giving_up_still_advances_the_trail() {
+        let (_d, core) = trail_core();
+        core.get_solution("a1", true, TODAY).unwrap();
+        core.get_solution("a2", true, TODAY).unwrap();
+        assert_eq!(solve(&core, "a1", TODAY).xp_gained, 0);
+        let second = solve(&core, "a2", TODAY);
+        assert_eq!(second.xp_gained, 0);
+        assert_eq!(second.units_unlocked, vec!["B".to_string()]);
+        assert_eq!(unit_states(&core), vec![InProgress, Unlocked, Locked]);
+    }
+
+    // "Unidade liberada nunca volta a ficar bloqueada", mesmo se o conteúdo crescer.
+    #[test]
+    fn an_unlocked_unit_stays_unlocked_after_the_previous_unit_grows() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("t.db");
+        {
+            // versão antiga do conteúdo: a unidade "a" só tinha a1
+            let problems = vec![
+                variant("a1", Difficulty::Easy, "a"),
+                variant("b1", Difficulty::Easy, "b"),
+            ];
+            let units = vec![unit("a", &["a1"]), unit("b", &["b1"])];
+            let old = Core::with_units(db::open(&path).unwrap(), problems, units);
+            solve(&old, "a1", TODAY);
+            assert_eq!(unit_states(&old), vec![Completed, Unlocked]);
+        }
+        // conteúdo novo: "a" agora tem três questões, e só uma está resolvida
+        let grown = trail_core_at(&path);
+        assert_eq!(unit_states(&grown), vec![InProgress, Unlocked, Locked]);
+        assert!(grown.get_problem("b1").is_ok());
+    }
+
+    #[test]
+    fn problems_outside_the_trail_stay_reachable() {
+        let dir = tempfile::tempdir().unwrap();
+        let problems = vec![variant("a1", Difficulty::Easy, "a"), variant("loose", Difficulty::Easy, "x")];
+        let core = Core::with_units(
+            db::open(&dir.path().join("t.db")).unwrap(),
+            problems,
+            vec![unit("a", &["a1"])],
+        );
+        assert!(core.get_problem("loose").is_ok());
+        assert_eq!(core.trail(TODAY).unwrap().len(), 1);
     }
 }

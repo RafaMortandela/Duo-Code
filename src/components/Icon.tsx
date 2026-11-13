@@ -25,7 +25,10 @@ export type IconName =
   | "star"
   | "crown"
   | "medal"
-  | "lock";
+  | "lock"
+  | "hash"
+  | "stack"
+  | "link";
 
 const paths: Record<IconName, ReactNode> = {
   home: (
@@ -116,6 +119,19 @@ const paths: Record<IconName, ReactNode> = {
     <>
       <circle cx="12" cy="15" r="5" />
       <path d="M9.500 10.500 7.500 4h9l-2 6.500" />
+    </>
+  ),
+  hash: <path d="M9.5 4 7.5 20M16.5 4l-2 16M4.5 9h16M3.5 15h16" />,
+  stack: (
+    <>
+      <path d="m4 8 8-4 8 4-8 4-8-4Z" />
+      <path d="m4 12 8 4 8-4M4 16l8 4 8-4" />
+    </>
+  ),
+  link: (
+    <>
+      <path d="M10 14a4 4 0 0 0 5.7 0l3-3A4 4 0 0 0 13 5.300l-1 1" />
+      <path d="M14 10a4 4 0 0 0-5.700 0l-3 3A4 4 0 0 0 11 18.700l1-1" />
     </>
   ),
   lock: (

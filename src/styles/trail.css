@@ -1,0 +1,150 @@
+/* Trilha: caminho vertical de nós em zigue-zague (spec 004). */
+
+.path {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.path-node {
+  --offset: 0px;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.path-node:nth-child(4n + 2),
+.path-node:nth-child(4n + 4) {
+  --offset: 56px;
+}
+
+.path-node:nth-child(4n + 3) {
+  --offset: 112px;
+}
+
+/* ligação pontilhada até o próximo nó */
+.path-node:not(:last-child)::after {
+  content: "";
+  position: absolute;
+  left: calc(var(--offset) + 37px);
+  top: 80px;
+  bottom: calc(-1 * var(--space-5));
+  border-left: 3px dotted var(--pastel);
+  pointer-events: none;
+}
+
+.node-button {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  align-self: flex-start;
+  margin-left: var(--offset);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  border-radius: var(--radius-pill);
+}
+
+.node-bubble {
+  position: relative;
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 76px;
+  height: 76px;
+  border-radius: 50%;
+  background: var(--primary-strong);
+  color: var(--on-primary);
+  box-shadow:
+    0 6px 0 var(--pastel),
+    var(--shadow-soft);
+  transition: transform var(--fast) var(--ease);
+}
+
+.node-button:hover .node-bubble {
+  transform: translateY(-2px);
+}
+
+.node-button:active .node-bubble {
+  transform: translateY(3px);
+}
+
+.path-node[data-state="locked"] .node-bubble {
+  background: var(--surface-alt);
+  color: var(--text-muted);
+  box-shadow: 0 6px 0 var(--border);
+}
+
+.path-node[data-state="completed"] .node-bubble {
+  background: var(--lavender);
+  color: var(--text);
+}
+
+.path-node[data-current="true"] .node-bubble {
+  outline: 4px solid var(--pastel);
+  outline-offset: 4px;
+}
+
+.node-check {
+  position: absolute;
+  right: -2px;
+  bottom: -2px;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--success);
+  color: var(--text);
+  border: 3px solid var(--bg);
+}
+
+.node-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.node-text strong {
+  font-size: 19px;
+  font-weight: 800;
+}
+
+.node-meta {
+  display: inline-flex;
+  gap: var(--space-2);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.path-node[data-state="locked"] .node-text strong {
+  color: var(--text-muted);
+}
+
+.node-panel {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin-left: calc(var(--offset) + 92px);
+  padding: var(--space-4);
+}
+
+.node-blocked {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-weight: 700;
+}
+
+.node-blocked svg {
+  flex: none;
+  color: var(--primary-strong);
+}

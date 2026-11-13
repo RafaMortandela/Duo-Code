@@ -7,6 +7,10 @@ Para cada questão:
   - starter.py NÃO passa (senão a questão já nasce resolvida);
   - naive.py, se existir, estoura o tempo limite (spec 006 CA-4).
 
+E para a trilha (content/units.json, spec 004 RF-7): toda questão está em
+exatamente uma unidade, na unidade que ela declara, e não há referência a
+questão inexistente.
+
 Usa o mesmo harness do app, então julga exatamente como ele.
 
 Uso: python3 scripts/validate_content.py [pasta_content]
@@ -180,6 +184,49 @@ def validate(folder):
     return errors
 
 
+def check_units(content, folders):
+    """Erros de content/units.json em relação às pastas de questão."""
+    path = content / "units.json"
+    if not path.is_file():
+        return ["units.json is missing"]
+    try:
+        units = json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as e:
+        return [f"units.json: invalid JSON: {e}"]
+    if not isinstance(units, list):
+        return ["units.json: must be a list of units"]
+
+    declared = {}
+    for folder in folders:
+        try:
+            declared[folder.name] = json.loads((folder / "meta.json").read_text(encoding="utf-8")).get("unit")
+        except (OSError, json.JSONDecodeError):
+            declared[folder.name] = None
+
+    errors, seen_units, placed = [], set(), {}
+    for unit in units:
+        unit_id = unit.get("id") if isinstance(unit, dict) else None
+        if not unit_id or not unit.get("title") or not isinstance(unit.get("problems"), list):
+            errors.append(f"units.json: unit {unit_id!r} needs 'id', 'title' and 'problems'")
+            continue
+        if unit_id in seen_units:
+            errors.append(f"units.json: duplicate unit '{unit_id}'")
+        seen_units.add(unit_id)
+        for slug in unit["problems"]:
+            if slug not in declared:
+                errors.append(f"units.json: unit '{unit_id}' references unknown problem '{slug}'")
+            elif slug in placed:
+                errors.append(f"units.json: problem '{slug}' is in both '{placed[slug]}' and '{unit_id}'")
+            else:
+                placed[slug] = unit_id
+                if declared[slug] != unit_id:
+                    errors.append(f"units.json: '{slug}' is listed under '{unit_id}' but its meta.json says '{declared[slug]}'")
+    for slug in declared:
+        if slug not in placed:
+            errors.append(f"units.json: problem '{slug}' is not in any unit")
+    return errors
+
+
 def main():
     content = Path(sys.argv[1]).resolve() if len(sys.argv) > 1 else ROOT / "content"
     problems = content / "problems"
@@ -199,7 +246,17 @@ def main():
         else:
             print(f"ok   {folder.name}")
 
-    print(f"\n{len(folders) - failed} of {len(folders)} problems valid.")
+    problems_failed = failed
+    unit_errors = check_units(content, folders)
+    if unit_errors:
+        failed += 1
+        print("FAIL units.json")
+        for e in unit_errors:
+            print(f"     {e}")
+    else:
+        print("ok   units.json")
+
+    print(f"\n{len(folders) - problems_failed} of {len(folders)} problems valid.")
     if not folders:
         print("error: no problems found", file=sys.stderr)
         return 1

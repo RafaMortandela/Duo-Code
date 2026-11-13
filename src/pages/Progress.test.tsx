@@ -41,8 +41,8 @@ describe("Home (003 RF-4)", () => {
     expect(await screen.findByText(copy.home.state.secured)).toBeTruthy();
     expect(screen.getByText(copy.level.progress(10, 100))).toBeTruthy();
     expect(screen.getByText(copy.level.toNext(90, 2))).toBeTruthy();
-    // não há mais questão nova para sugerir
-    expect(screen.getByText(copy.home.allDone)).toBeTruthy();
+    // a sugestão segue a trilha: agora é a questão da unidade que abriu
+    expect(screen.getByRole("heading", { name: "Demo: Add Again" })).toBeTruthy();
   });
 });
 
@@ -96,7 +96,7 @@ describe("Perfil (003 RF-5)", () => {
 
     expect(await screen.findByText(copy.profile.achievementsCount(0, 13))).toBeTruthy();
     expect(screen.getAllByText(copy.profile.locked)).toHaveLength(13);
-    expect(screen.getByText(copy.profile.solvedOf(0, 1))).toBeTruthy();
+    expect(screen.getByText(copy.profile.solvedOf(0, 2))).toBeTruthy();
     expect(
       screen.getByRole("img", { name: copy.profile.calendarSummary(0) }),
     ).toBeTruthy();
@@ -108,9 +108,9 @@ describe("Perfil (003 RF-5)", () => {
     await solveDemo(user);
     await user.click(screen.getByRole("link", { name: copy.nav.profile }));
 
-    expect(await screen.findByText(copy.profile.solvedOf(1, 1))).toBeTruthy();
-    expect(screen.getByText(copy.profile.achievementsCount(4, 13))).toBeTruthy();
-    expect(screen.getAllByText(copy.profile.locked)).toHaveLength(9);
+    expect(await screen.findByText(copy.profile.solvedOf(1, 2))).toBeTruthy();
+    expect(screen.getByText(copy.profile.achievementsCount(3, 13))).toBeTruthy();
+    expect(screen.getAllByText(copy.profile.locked)).toHaveLength(10);
     expect(
       screen.getByRole("img", { name: copy.profile.calendarSummary(1) }),
     ).toBeTruthy();
