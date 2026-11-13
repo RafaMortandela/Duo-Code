@@ -9,28 +9,31 @@ import {
   SettingsPage,
   TrailPage,
 } from "./pages";
+import { ProgressProvider } from "./progress/ProgressProvider";
 import { ThemeProvider } from "./theme/ThemeProvider";
 
 export default function App() {
   return (
     <ToastProvider>
       <ThemeProvider>
-        <HashRouter>
-          <div className="app">
-            <Sidebar />
-            <main className="main">
-              <Routes>
-                <Route path="/" element={<HomePage />} />
-                <Route path="/trail" element={<TrailPage />} />
-                <Route path="/problem/:slug" element={<ProblemPage />} />
-                <Route path="/review" element={<ReviewPage />} />
-                <Route path="/profile" element={<ProfilePage />} />
-                <Route path="/settings" element={<SettingsPage />} />
-                <Route path="*" element={<Navigate to="/" replace />} />
-              </Routes>
-            </main>
-          </div>
-        </HashRouter>
+        <ProgressProvider>
+          <HashRouter>
+            <div className="app">
+              <Sidebar />
+              <main className="main">
+                <Routes>
+                  <Route path="/" element={<HomePage />} />
+                  <Route path="/trail" element={<TrailPage />} />
+                  <Route path="/problem/:slug" element={<ProblemPage />} />
+                  <Route path="/review" element={<ReviewPage />} />
+                  <Route path="/profile" element={<ProfilePage />} />
+                  <Route path="/settings" element={<SettingsPage />} />
+                  <Route path="*" element={<Navigate to="/" replace />} />
+                </Routes>
+              </main>
+            </div>
+          </HashRouter>
+        </ProgressProvider>
       </ThemeProvider>
     </ToastProvider>
   );

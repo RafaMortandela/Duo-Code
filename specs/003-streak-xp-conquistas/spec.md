@@ -30,6 +30,8 @@ Dar motivo para voltar todo dia. Resolver ao menos uma questão por dia mantém 
 | Revisão aceita | 5 |
 
 - XP de primeira resolução é concedido uma única vez por questão.
+- **Desistência:** se a usuária desistiu de uma questão (viu a solução antes de resolvê-la), uma aceitação posterior marca a questão como resolvida, mas não rende XP nem torna o dia ativo. Ela ainda poderá render XP de revisão (spec 005).
+- "Questão resolvida", para contagens e conquistas, é a que rendeu XP de primeira resolução.
 - XP total necessário para **chegar** ao nível `n`: `50 · n · (n − 1)` (nível 1 = 0, nível 2 = 100, nível 3 = 300, nível 4 = 600…).
 
 ### Conquistas
@@ -73,6 +75,7 @@ Cada conquista é destravada uma única vez, com data registrada.
 - **CA-10** Submissão não aceita não altera streak, XP nem conquistas.
 - **CA-11** Se a gravação falhar no meio, nada é persistido (sem XP sem submissão, nem o contrário).
 - **CA-12** Aceita na primeira submissão de uma questão → `first-try`; na segunda → não.
+- **CA-13** Desistir de uma questão e depois tê-la aceita → +0 XP, o dia não se torna ativo, e o resumo informa o motivo.
 
 ## Fora de escopo
 

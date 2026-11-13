@@ -1,4 +1,5 @@
 import { call } from "./client";
+import type { Rewards } from "./progress";
 
 export type Difficulty = "easy" | "medium" | "hard";
 export type ProblemStatus = "new" | "attempted" | "solved";
@@ -80,8 +81,14 @@ export function runCode(slug: string, code: string): Promise<RunOutcome> {
   return call("run_code", { slug, code });
 }
 
-/** Roda todos os testes e registra a submissão. */
-export function submitCode(slug: string, code: string): Promise<RunOutcome> {
+export type SubmitResult = {
+  outcome: RunOutcome;
+  /** Presente quando a submissão foi aceita. */
+  rewards: Rewards | null;
+};
+
+/** Roda todos os testes, registra a submissão e devolve as recompensas. */
+export function submitCode(slug: string, code: string): Promise<SubmitResult> {
   return call("submit_code", { slug, code });
 }
 

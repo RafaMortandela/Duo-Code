@@ -2,26 +2,10 @@ import { EmptyCard, PageShell } from "../components/PageShell";
 import { copy } from "../copy";
 import { useTheme, type ThemePreference } from "../theme/ThemeProvider";
 
-export function HomePage() {
-  return (
-    <PageShell title={copy.home.title} subtitle={copy.home.subtitle}>
-      <EmptyCard message={copy.home.empty} />
-    </PageShell>
-  );
-}
-
 export function ReviewPage() {
   return (
     <PageShell title={copy.review.title} subtitle={copy.review.subtitle}>
       <EmptyCard message={copy.review.empty} />
-    </PageShell>
-  );
-}
-
-export function ProfilePage() {
-  return (
-    <PageShell title={copy.profile.title} subtitle={copy.profile.subtitle}>
-      <EmptyCard message={copy.profile.empty} />
     </PageShell>
   );
 }
@@ -59,3 +43,5 @@ export function SettingsPage() {
 
 export { ProblemPage } from "./ProblemPage";
 export { TrailPage } from "./TrailPage";
+export { HomePage } from "./HomePage";
+export { ProfilePage } from "./ProfilePage";

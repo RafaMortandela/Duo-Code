@@ -62,8 +62,11 @@ export function CodeEditor(props: CodeEditorProps) {
 
     return () => {
       sub.dispose();
-      instance.getModel()?.dispose();
+      // O editor primeiro: descartar o modelo com o editor ainda vivo faz os
+      // recursos dele (sugestões inline) lançarem "Model is disposed!".
+      const model = instance.getModel();
       instance.dispose();
+      model?.dispose();
       editor.current = null;
     };
     // criado uma vez; tema e conteúdo são atualizados pelos efeitos abaixo

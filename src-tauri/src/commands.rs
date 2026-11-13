@@ -1,6 +1,6 @@
 //! Comandos expostos ao frontend. Só repassam para `Core`.
 
-use crate::core::{Core, ProblemDetail, ProblemSummary};
+use crate::core::{Core, ProblemDetail, ProblemSummary, Progress, SubmitResult};
 use crate::db;
 use crate::error::AppResult;
 use crate::runner::RunOutcome;
@@ -39,7 +39,7 @@ pub fn run_code(core: State<'_, Core>, slug: String, code: String) -> AppResult<
 }
 
 #[tauri::command(async)]
-pub fn submit_code(core: State<'_, Core>, slug: String, code: String) -> AppResult<RunOutcome> {
+pub fn submit_code(core: State<'_, Core>, slug: String, code: String) -> AppResult<SubmitResult> {
     core.submit_code(&slug, &code, &today())
 }
 
@@ -51,4 +51,9 @@ pub fn save_draft(core: State<'_, Core>, slug: String, code: String) -> AppResul
 #[tauri::command]
 pub fn get_solution(core: State<'_, Core>, slug: String, give_up: bool) -> AppResult<String> {
     core.get_solution(&slug, give_up, &today())
+}
+
+#[tauri::command]
+pub fn get_progress(core: State<'_, Core>) -> AppResult<Progress> {
+    core.progress(&today())
 }

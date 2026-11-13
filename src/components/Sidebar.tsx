@@ -1,5 +1,6 @@
 import { NavLink } from "react-router-dom";
 import { copy } from "../copy";
+import { useProgress } from "../progress/ProgressProvider";
 import { Icon, type IconName } from "./Icon";
 
 const items: { to: string; label: string; icon: IconName }[] = [
@@ -11,6 +12,7 @@ const items: { to: string; label: string; icon: IconName }[] = [
 ];
 
 export function Sidebar() {
+  const { progress } = useProgress();
   return (
     <aside className="sidebar">
       <div className="brand">
@@ -27,6 +29,16 @@ export function Sidebar() {
           </NavLink>
         ))}
       </nav>
+      {progress && (
+        <div
+          className="sidebar-streak"
+          data-state={progress.streak.state}
+          title={copy.home.state[progress.streak.state]}
+        >
+          <Icon name="flame" size={20} />
+          {copy.streak.sidebar(progress.streak.current)}
+        </div>
+      )}
     </aside>
   );
 }

@@ -1,0 +1,368 @@
+/* Home, Perfil, recompensas e streak (spec 003). */
+
+.eyebrow,
+.reward-eyebrow {
+  display: block;
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.count {
+  margin-left: var(--space-2);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+/* Sidebar */
+.sidebar-streak {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: auto;
+  padding: 10px var(--space-4);
+  border-radius: var(--radius-pill);
+  background: var(--surface-alt);
+  font-weight: 800;
+}
+
+.sidebar-streak svg {
+  color: var(--primary-strong);
+}
+
+.sidebar-streak[data-state="broken"] svg {
+  color: var(--text-muted);
+}
+
+/* Home */
+.home-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+}
+
+.streak-card {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+}
+
+.streak-flame {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 88px;
+  height: 88px;
+  border-radius: 50%;
+  background: var(--peach);
+  color: var(--primary-strong);
+}
+
+.streak-card[data-state="secured"] .streak-flame {
+  animation: flame-pulse 1.8s var(--ease) infinite;
+}
+
+.streak-card[data-state="broken"] .streak-flame {
+  background: var(--surface-alt);
+  color: var(--text-muted);
+}
+
+@keyframes flame-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.06);
+  }
+}
+
+.streak-number {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.streak-number strong {
+  font-size: 52px;
+  line-height: 1;
+  font-weight: 900;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+.streak-message {
+  margin: var(--space-2) 0 var(--space-1);
+  font-weight: 700;
+}
+
+.next-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.next-card h2 {
+  margin: var(--space-1) 0 var(--space-3);
+  font-size: 20px;
+}
+
+/* Nível */
+.level {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.level-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.level-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: 20px;
+  font-weight: 900;
+}
+
+.level-badge svg {
+  color: var(--lavender);
+}
+
+.level-next {
+  font-size: 14px;
+}
+
+.bar {
+  height: 14px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-alt);
+  overflow: hidden;
+}
+
+.bar-fill {
+  height: 100%;
+  min-width: 14px;
+  border-radius: var(--radius-pill);
+  background: var(--primary);
+  transition: width 400ms var(--ease);
+}
+
+/* Perfil */
+.stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-4);
+}
+
+.stat {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.stat svg {
+  flex: none;
+  color: var(--primary);
+}
+
+.stat-value {
+  font-size: 22px;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+}
+
+.stat .muted {
+  font-size: 13px;
+}
+
+.solved-list {
+  display: flex;
+  gap: var(--space-5);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.solved-list li {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: 18px;
+}
+
+/* Calendário: uma coluna por semana, domingo no topo */
+.calendar {
+  display: grid;
+  grid-auto-flow: column;
+  grid-template-rows: repeat(7, 11px);
+  grid-auto-columns: 11px;
+  gap: 3px;
+  overflow-x: auto;
+  padding-bottom: var(--space-1);
+}
+
+.calendar-cell {
+  border-radius: 3px;
+  background: var(--surface-alt);
+}
+
+.calendar-cell[data-level="1"] {
+  background: var(--pastel);
+}
+
+.calendar-cell[data-level="2"] {
+  background: var(--primary);
+}
+
+.calendar-cell[data-level="3"] {
+  background: var(--primary-strong);
+}
+
+.calendar-cell[data-today="true"] {
+  outline: 2px solid var(--lavender);
+  outline-offset: 1px;
+}
+
+.calendar-summary {
+  margin-top: var(--space-3);
+  font-size: 14px;
+}
+
+/* Conquistas */
+.achievements {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.achievement {
+  display: flex;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-field);
+}
+
+.achievement-icon {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--surface-alt);
+  color: var(--text-muted);
+}
+
+.achievement[data-unlocked="true"] {
+  border-color: var(--pastel);
+  background: var(--surface-alt);
+}
+
+.achievement[data-unlocked="true"] .achievement-icon {
+  background: var(--primary-strong);
+  color: var(--on-primary);
+}
+
+.achievement[data-unlocked="false"] .achievement-title {
+  color: var(--text-muted);
+}
+
+.achievement-title {
+  font-weight: 800;
+}
+
+.achievement .muted {
+  font-size: 13px;
+}
+
+.achievement-date {
+  margin-top: var(--space-1);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+/* Recompensas na tela de questão */
+.rewards {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.reward-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 6px 14px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-alt);
+  font-weight: 900;
+}
+
+.chip[data-kind="xp"] svg {
+  color: var(--lavender);
+}
+
+.chip[data-kind="streak"] svg {
+  color: var(--primary-strong);
+}
+
+.reward-note {
+  font-weight: 700;
+}
+
+.reward-highlight {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-field);
+  border: 1.5px solid var(--pastel);
+  background: var(--surface-alt);
+  font-weight: 800;
+  animation: reward-in 400ms var(--ease);
+}
+
+.reward-highlight svg {
+  flex: none;
+  color: var(--primary-strong);
+}
+
+.reward-highlight[data-kind="level"] svg {
+  color: var(--lavender);
+}
+
+@keyframes reward-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}

@@ -2,6 +2,7 @@ mod commands;
 pub mod content;
 pub mod core;
 pub mod db;
+pub mod domain;
 pub mod error;
 pub mod runner;
 
@@ -47,6 +48,7 @@ pub fn run() {
             commands::submit_code,
             commands::save_draft,
             commands::get_solution,
+            commands::get_progress,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

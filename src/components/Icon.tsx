@@ -20,7 +20,12 @@ export type IconName =
   | "bulb"
   | "reset"
   | "eye"
-  | "back";
+  | "back"
+  | "flame"
+  | "star"
+  | "crown"
+  | "medal"
+  | "lock";
 
 const paths: Record<IconName, ReactNode> = {
   home: (
@@ -94,7 +99,31 @@ const paths: Record<IconName, ReactNode> = {
       <circle cx="12" cy="12" r="2.5" />
     </>
   ),
-  back: <path d="M14.500 6 8.500 12l6 6" />,
+  back: <path d="M14.5 6 8.5 12l6 6" />,
+  flame: (
+    <path d="M12 3.5c1 3.5 5.5 5.5 5.5 10.5a5.5 5.5 0 0 1-11 0c0-2.200 1-3.800 2.200-5 .3 1.500 1 2.300 2 2.800-.2-2.800.1-5.800 1.300-8.300Z" />
+  ),
+  star: (
+    <path d="m12 4 2.400 5 5.400.700-4 3.800 1 5.400L12 16.300l-4.800 2.600 1-5.400-4-3.800 5.400-.700L12 4Z" />
+  ),
+  crown: (
+    <>
+      <path d="M5 15 4 7.500l4.500 3.500L12 6l3.500 5L20 7.500 19 15H5Z" />
+      <path d="M5.500 18.500h13" />
+    </>
+  ),
+  medal: (
+    <>
+      <circle cx="12" cy="15" r="5" />
+      <path d="M9.500 10.500 7.500 4h9l-2 6.500" />
+    </>
+  ),
+  lock: (
+    <>
+      <path d="M7 11h10v8.500H7z" />
+      <path d="M9 11V8a3 3 0 0 1 6 0v3" />
+    </>
+  ),
 };
 
 export function Icon({ name, size = 22 }: { name: IconName; size?: number }) {

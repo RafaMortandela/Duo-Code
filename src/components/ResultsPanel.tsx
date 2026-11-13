@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import type { CaseResult, CaseStatus, ErrorInfo, RunOutcome, Verdict } from "../api/problems";
 import { copy } from "../copy";
 import { pyRepr } from "../lib/pyRepr";
@@ -89,10 +89,13 @@ export function ResultsPanel({
   outcome,
   mode,
   busy,
+  afterVerdict,
 }: {
   outcome: RunOutcome | null;
   mode: RunMode;
   busy: boolean;
+  /** Mostrado logo abaixo do veredito (o resumo de recompensas, por exemplo). */
+  afterVerdict?: ReactNode;
 }) {
   const [selected, setSelected] = useState(0);
 
@@ -129,6 +132,8 @@ export function ResultsPanel({
           {copy.results.count(outcome.passed, outcome.total)}
         </span>
       </div>
+
+      {afterVerdict}
 
       {outcome.error && <ErrorBlock error={outcome.error} />}
 

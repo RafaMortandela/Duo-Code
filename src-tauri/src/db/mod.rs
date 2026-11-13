@@ -1,4 +1,5 @@
 pub mod problems;
+pub mod progress;
 pub mod settings;
 
 use crate::error::AppResult;
@@ -34,6 +35,22 @@ const MIGRATIONS: &[&str] = &[
     CREATE TABLE give_ups (
         problem_slug TEXT PRIMARY KEY,
         local_date   TEXT NOT NULL
+    ) STRICT;",
+    // 3 — eventos de XP (fonte de XP e dos dias ativos) e conquistas (spec 003)
+    "CREATE TABLE xp_events (
+        id           INTEGER PRIMARY KEY,
+        local_date   TEXT NOT NULL,
+        kind         TEXT NOT NULL CHECK (kind IN ('solve', 'review')),
+        problem_slug TEXT NOT NULL,
+        amount       INTEGER NOT NULL CHECK (amount >= 0),
+        created_at   TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+    ) STRICT;
+    CREATE INDEX idx_xp_events_date ON xp_events (local_date);
+    CREATE UNIQUE INDEX idx_xp_events_one_solve
+        ON xp_events (problem_slug) WHERE kind = 'solve';
+    CREATE TABLE achievements_unlocked (
+        id         TEXT PRIMARY KEY,
+        local_date TEXT NOT NULL
     ) STRICT;",
 ];
 

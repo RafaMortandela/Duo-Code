@@ -2,11 +2,85 @@
 
 use crate::content::{Complexity, Difficulty, Param, Problem, TestCase};
 use crate::db;
+use crate::domain::achievements::{self, AchievementState};
+use crate::domain::streak::{streak, Streak};
+use crate::domain::xp::{level_info, xp_for, LevelInfo, XpEvent};
 use crate::error::{AppError, AppResult};
 use crate::runner::{self, RunOutcome, Verdict};
+use chrono::{Days, NaiveDate};
 use rusqlite::Connection;
 use serde::Serialize;
+use std::collections::{HashMap, HashSet};
 use std::sync::{Mutex, MutexGuard};
+
+/// Por que uma submissão aceita rendeu (ou não) recompensa.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum RewardReason {
+    FirstSolve,
+    /// Já tinha rendido XP antes: reenviar não conta (CA-7).
+    AlreadySolved,
+    /// A usuária desistiu desta questão antes de resolvê-la (CA-13).
+    GaveUp,
+}
+
+/// Resumo de recompensas de uma submissão aceita (RF-3).
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct Rewards {
+    pub reason: RewardReason,
+    pub xp_gained: u32,
+    pub level_before: u32,
+    pub level: LevelInfo,
+    pub streak_before: u32,
+    pub streak: Streak,
+    /// Ids das conquistas destravadas por esta submissão.
+    pub achievements: Vec<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct SubmitResult {
+    pub outcome: RunOutcome,
+    /// Presente quando a submissão foi aceita.
+    pub rewards: Option<Rewards>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize)]
+pub struct SolvedCounts {
+    pub easy: u32,
+    pub medium: u32,
+    pub hard: u32,
+    pub total: u32,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct ActivityDay {
+    pub date: String,
+    /// Eventos que renderam XP no dia.
+    pub count: u32,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct AchievementStatus {
+    pub id: String,
+    pub unlocked_on: Option<String>,
+}
+
+/// Tudo que Home e Perfil mostram (RF-4, RF-5).
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct Progress {
+    pub today: String,
+    pub streak: Streak,
+    pub level: LevelInfo,
+    pub solved: SolvedCounts,
+    pub problems_total: u32,
+    /// Últimos 12 meses, só os dias com atividade.
+    pub activity: Vec<ActivityDay>,
+    pub achievements: Vec<AchievementStatus>,
+    pub next_problem: Option<ProblemSummary>,
+}
+
+/// Quantos dias de atividade o calendário do perfil cobre (53 semanas).
+pub const ACTIVITY_DAYS: u64 = 371;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "snake_case")]
@@ -132,14 +206,54 @@ impl Core {
         runner::run(&self.python()?, p, code, &tests)
     }
 
-    /// "Enviar": todos os testes, e a submissão é gravada (RF-3, RF-8).
-    pub fn submit_code(&self, slug: &str, code: &str, today: &str) -> AppResult<RunOutcome> {
+    /// Estado de progresso lido do banco, para as regras puras decidirem.
+    fn snapshot(
+        &self,
+        conn: &Connection,
+        today: NaiveDate,
+    ) -> AppResult<(Streak, LevelInfo, HashSet<String>)> {
+        let streak = streak(&db::progress::active_dates(conn)?, today);
+        let level = level_info(db::progress::xp_total(conn)?);
+        Ok((streak, level, db::progress::rewarded_slugs(conn)?))
+    }
+
+    fn solved_counts(&self, rewarded: &HashSet<String>) -> SolvedCounts {
+        let mut counts = SolvedCounts::default();
+        for p in self.problems.iter().filter(|p| rewarded.contains(&p.slug)) {
+            match p.difficulty {
+                Difficulty::Easy => counts.easy += 1,
+                Difficulty::Medium => counts.medium += 1,
+                Difficulty::Hard => counts.hard += 1,
+            }
+            counts.total += 1;
+        }
+        counts
+    }
+
+    /// (unidades com todas as questões resolvidas, total de unidades)
+    fn unit_counts(&self, rewarded: &HashSet<String>) -> (u32, u32) {
+        let mut units: HashMap<&str, bool> = HashMap::new();
+        for p in &self.problems {
+            let complete = units.entry(p.unit.as_str()).or_insert(true);
+            *complete &= rewarded.contains(&p.slug);
+        }
+        (units.values().filter(|c| **c).count() as u32, units.len() as u32)
+    }
+
+    /// "Enviar": todos os testes; grava a submissão e, se aceita, as
+    /// recompensas — tudo em uma única transação (RF-2, CA-11).
+    pub fn submit_code(&self, slug: &str, code: &str, today: &str) -> AppResult<SubmitResult> {
         let p = self.problem(slug)?;
+        let date = db::progress::parse_date(today)?;
         let tests: Vec<&TestCase> = p.tests.iter().collect();
         // A trava do banco só é pega depois da execução, para não segurar o app.
         let outcome = runner::run(&self.python()?, p, code, &tests)?;
+
+        let mut conn = self.conn()?;
+        let tx = conn.transaction()?;
+        let first_submission = db::problems::count_submissions(&tx, slug)? == 0;
         db::problems::insert_submission(
-            &*self.conn()?,
+            &tx,
             &db::problems::NewSubmission {
                 slug,
                 code,
@@ -150,7 +264,113 @@ impl Core {
                 local_date: today,
             },
         )?;
-        Ok(outcome)
+
+        let rewards = if is_accepted(&outcome) {
+            let (streak_before, level_before, rewarded_before) = self.snapshot(&tx, date)?;
+            let reason = if rewarded_before.contains(slug) {
+                RewardReason::AlreadySolved
+            } else if db::problems::has_given_up(&tx, slug)? {
+                RewardReason::GaveUp
+            } else {
+                RewardReason::FirstSolve
+            };
+            let xp_gained = if reason == RewardReason::FirstSolve {
+                let amount = xp_for(XpEvent::FirstSolve(p.difficulty));
+                db::progress::insert_xp_event(&tx, today, db::progress::KIND_SOLVE, slug, amount)?;
+                amount
+            } else {
+                0
+            };
+
+            let (streak, level, rewarded) = self.snapshot(&tx, date)?;
+            let solved = self.solved_counts(&rewarded);
+            let (units_completed, units_total) = self.unit_counts(&rewarded);
+            let state = AchievementState {
+                solved: solved.total,
+                solved_medium: solved.medium,
+                solved_hard: solved.hard,
+                streak: streak.current,
+                units_completed,
+                units_total,
+                first_try: reason == RewardReason::FirstSolve && first_submission,
+                reviews: db::progress::review_count(&tx)?,
+                level: level.level,
+            };
+            let already = db::progress::unlocked_achievements(&tx)?;
+            let mut unlocked = Vec::new();
+            for id in achievements::evaluate(&state) {
+                if !already.contains_key(id) {
+                    db::progress::unlock_achievement(&tx, id, today)?;
+                    unlocked.push(id.to_string());
+                }
+            }
+            Some(Rewards {
+                reason,
+                xp_gained,
+                level_before: level_before.level,
+                level,
+                streak_before: streak_before.current,
+                streak,
+                achievements: unlocked,
+            })
+        } else {
+            None
+        };
+
+        tx.commit()?;
+        Ok(SubmitResult { outcome, rewards })
+    }
+
+    pub fn progress(&self, today: &str) -> AppResult<Progress> {
+        let date = db::progress::parse_date(today)?;
+        let conn = self.conn()?;
+        let (streak, level, rewarded) = self.snapshot(&conn, date)?;
+
+        let from = date
+            .checked_sub_days(Days::new(ACTIVITY_DAYS - 1))
+            .unwrap_or(date)
+            .format(db::progress::DATE_FORMAT)
+            .to_string();
+        let activity = db::progress::activity_since(&conn, &from)?
+            .into_iter()
+            .map(|(date, count)| ActivityDay { date, count })
+            .collect();
+
+        let unlocked = db::progress::unlocked_achievements(&conn)?;
+        let achievements = achievements::CATALOG
+            .iter()
+            .map(|(id, _)| AchievementStatus {
+                id: id.to_string(),
+                unlocked_on: unlocked.get(*id).cloned(),
+            })
+            .collect();
+
+        // Próxima sugestão: a primeira questão ainda não resolvida.
+        // A spec 004 troca isto pela ordem da trilha.
+        let attempts = db::problems::attempt_map(&conn)?;
+        let next_problem = self
+            .problems
+            .iter()
+            .find(|p| attempts.get(&p.slug) != Some(&true))
+            .map(|p| {
+                let status = if attempts.contains_key(&p.slug) {
+                    ProblemStatus::Attempted
+                } else {
+                    ProblemStatus::New
+                };
+                Self::summary(p, status)
+            });
+
+        Ok(Progress {
+            today: today.to_string(),
+            streak,
+            level,
+            solved: self.solved_counts(&rewarded),
+            problems_total: self.problems.len() as u32,
+            activity,
+            achievements,
+            next_problem,
+        })
     }
 
     pub fn save_draft(&self, slug: &str, code: &str) -> AppResult<()> {
@@ -207,7 +427,7 @@ mod tests {
         assert_eq!(run.total, 2, "run uses only the visible tests");
         assert_eq!(submissions(&core), 0);
 
-        let sub = core.submit_code("add", &good, TODAY).unwrap();
+        let sub = core.submit_code("add", &good, TODAY).unwrap().outcome;
         assert_eq!(sub.total, 3, "submit uses visible + hidden tests");
         assert!(is_accepted(&sub));
         assert_eq!(submissions(&core), 1);
@@ -317,14 +537,274 @@ mod tests {
         let core = Core::new(db::open(&dir.path().join("t.db")).unwrap(), problems.clone());
 
         for p in &problems {
-            let starter = core.submit_code(&p.slug, &p.starter, TODAY).unwrap();
+            let starter = core.submit_code(&p.slug, &p.starter, TODAY).unwrap().outcome;
             assert!(!is_accepted(&starter), "{}: starter must not pass", p.slug);
 
-            let solved = core.submit_code(&p.slug, &p.solution, TODAY).unwrap();
+            let solved = core.submit_code(&p.slug, &p.solution, TODAY).unwrap().outcome;
             assert!(is_accepted(&solved), "{}: {:?}", p.slug, solved.cases.iter().find(|c| c.error.is_some()));
             assert_eq!(solved.total, p.tests.len());
         }
         let statuses = core.list_problems().unwrap();
         assert!(statuses.iter().all(|s| s.status == ProblemStatus::Solved));
+    }
+
+    // ---------- spec 003 ----------
+
+    use crate::content::{Difficulty, Problem};
+    use crate::domain::streak::DayState;
+
+    const WRONG: &str = "def add(a, b):\n    return 0\n";
+
+    fn variant(slug: &str, difficulty: Difficulty, unit: &str) -> Problem {
+        let mut p = add_problem();
+        p.slug = slug.into();
+        p.difficulty = difficulty;
+        p.unit = unit.into();
+        p
+    }
+
+    /// e1, e2 (easy, unidade a) · m1 (medium, unidade b) · h1, h2, h3 (hard, unidade c)
+    fn game() -> (tempfile::TempDir, Core) {
+        let dir = tempfile::tempdir().unwrap();
+        let conn = db::open(&dir.path().join("t.db")).unwrap();
+        let problems = vec![
+            variant("e1", Difficulty::Easy, "a"),
+            variant("e2", Difficulty::Easy, "a"),
+            variant("m1", Difficulty::Medium, "b"),
+            variant("h1", Difficulty::Hard, "c"),
+            variant("h2", Difficulty::Hard, "c"),
+            variant("h3", Difficulty::Hard, "c"),
+        ];
+        (dir, Core::new(conn, problems))
+    }
+
+    fn solve(core: &Core, slug: &str, day: &str) -> Rewards {
+        let solution = add_problem().solution;
+        core.submit_code(slug, &solution, day).unwrap().rewards.expect("accepted")
+    }
+
+    // CA-7
+    #[test]
+    fn first_solve_grants_xp_once_and_resubmitting_grants_nothing() {
+        let (_d, core) = game();
+        let first = solve(&core, "m1", "2026-11-10");
+        assert_eq!(first.reason, RewardReason::FirstSolve);
+        assert_eq!(first.xp_gained, 20);
+        assert_eq!(first.level.xp_total, 20);
+
+        // dois dias depois: reenviar não rende XP nem torna o dia ativo
+        let again = solve(&core, "m1", "2026-11-12");
+        assert_eq!(again.reason, RewardReason::AlreadySolved);
+        assert_eq!(again.xp_gained, 0);
+        assert_eq!(again.level.xp_total, 20);
+        assert_eq!(again.streak.state, DayState::Broken);
+        assert_eq!(again.streak.current, 0);
+        assert!(again.achievements.is_empty());
+    }
+
+    #[test]
+    fn xp_follows_difficulty() {
+        let (_d, core) = game();
+        assert_eq!(solve(&core, "e1", TODAY).xp_gained, 10);
+        assert_eq!(solve(&core, "m1", TODAY).xp_gained, 20);
+        assert_eq!(solve(&core, "h1", TODAY).xp_gained, 40);
+        assert_eq!(core.progress(TODAY).unwrap().level.xp_total, 70);
+    }
+
+    // CA-4
+    #[test]
+    fn two_solves_on_the_same_day_raise_the_streak_by_one() {
+        let (_d, core) = game();
+        let a = solve(&core, "e1", TODAY);
+        assert_eq!((a.streak_before, a.streak.current), (0, 1));
+        let b = solve(&core, "e2", TODAY);
+        assert_eq!((b.streak_before, b.streak.current), (1, 1));
+        assert_eq!(b.streak.state, DayState::Secured);
+    }
+
+    // CA-5
+    #[test]
+    fn solves_on_each_side_of_midnight_are_two_active_days() {
+        let (_d, core) = game();
+        solve(&core, "e1", "2026-11-11");
+        let next = solve(&core, "e2", "2026-11-12");
+        assert_eq!((next.streak_before, next.streak.current), (1, 2));
+    }
+
+    // CA-9
+    #[test]
+    fn streak_achievement_is_granted_once() {
+        let (_d, core) = game();
+        solve(&core, "e1", "2026-11-10");
+        let second = solve(&core, "e2", "2026-11-11");
+        assert!(!second.achievements.contains(&"streak-3".to_string()));
+
+        let third = solve(&core, "m1", "2026-11-12");
+        assert_eq!((third.streak_before, third.streak.current), (2, 3));
+        assert!(third.achievements.contains(&"streak-3".to_string()));
+
+        let fourth = solve(&core, "h1", "2026-11-13");
+        assert_eq!(fourth.streak.current, 4);
+        assert!(!fourth.achievements.contains(&"streak-3".to_string()));
+
+        let unlocked = db::progress::unlocked_achievements(&core.conn().unwrap()).unwrap();
+        assert_eq!(unlocked.get("streak-3").map(String::as_str), Some("2026-11-12"));
+    }
+
+    // CA-10
+    #[test]
+    fn rejected_submission_changes_nothing() {
+        let (_d, core) = game();
+        let result = core.submit_code("e1", WRONG, TODAY).unwrap();
+        assert!(result.rewards.is_none());
+
+        let progress = core.progress(TODAY).unwrap();
+        assert_eq!(progress.level.xp_total, 0);
+        assert_eq!(progress.streak.current, 0);
+        assert_eq!(progress.solved, SolvedCounts::default());
+        assert!(progress.achievements.iter().all(|a| a.unlocked_on.is_none()));
+        assert!(progress.activity.is_empty());
+    }
+
+    // CA-11
+    #[test]
+    fn a_failure_while_saving_rewards_persists_nothing() {
+        let (_d, core) = game();
+        core.conn()
+            .unwrap()
+            .execute_batch(
+                "CREATE TRIGGER fail_xp BEFORE INSERT ON xp_events
+                 BEGIN SELECT RAISE(ABORT, 'simulated failure'); END;",
+            )
+            .unwrap();
+
+        let err = core.submit_code("e1", &add_problem().solution, TODAY).unwrap_err();
+        assert_eq!(err.code, "db");
+
+        let conn = core.conn().unwrap();
+        assert_eq!(db::problems::count_submissions(&conn, "e1").unwrap(), 0);
+        assert_eq!(db::progress::xp_total(&conn).unwrap(), 0);
+        assert!(db::progress::unlocked_achievements(&conn).unwrap().is_empty());
+    }
+
+    // CA-12
+    #[test]
+    fn first_try_only_when_the_first_submission_is_accepted() {
+        let (_d, core) = game();
+        let clean = solve(&core, "e1", TODAY);
+        assert!(clean.achievements.contains(&"first-try".to_string()));
+        assert!(clean.achievements.contains(&"first-solve".to_string()));
+
+        let (_d2, other) = game();
+        other.submit_code("e1", WRONG, TODAY).unwrap();
+        let second_attempt = solve(&other, "e1", TODAY);
+        assert!(!second_attempt.achievements.contains(&"first-try".to_string()));
+        assert!(second_attempt.achievements.contains(&"first-solve".to_string()));
+    }
+
+    // CA-13
+    #[test]
+    fn solving_after_giving_up_earns_nothing() {
+        let (_d, core) = game();
+        core.get_solution("m1", true, TODAY).unwrap();
+        let r = solve(&core, "m1", TODAY);
+        assert_eq!(r.reason, RewardReason::GaveUp);
+        assert_eq!(r.xp_gained, 0);
+        assert_eq!(r.streak.current, 0);
+        assert!(r.achievements.is_empty());
+        // a questão fica resolvida, mas não entra na contagem de resolvidas
+        assert_eq!(core.list_problems().unwrap()[2].status, ProblemStatus::Solved);
+        assert_eq!(core.progress(TODAY).unwrap().solved.total, 0);
+    }
+
+    #[test]
+    fn level_up_is_reported_in_the_rewards() {
+        let (_d, core) = game();
+        let a = solve(&core, "h1", TODAY);
+        assert_eq!((a.level_before, a.level.level), (1, 1));
+        solve(&core, "h2", TODAY);
+        let c = solve(&core, "h3", TODAY); // 120 XP
+        assert_eq!((c.level_before, c.level.level), (1, 2));
+        assert_eq!(c.level.next_level_at, 300);
+    }
+
+    #[test]
+    fn unit_complete_needs_every_problem_of_the_unit() {
+        let (_d, core) = game();
+        let first = solve(&core, "e1", TODAY);
+        assert!(!first.achievements.contains(&"unit-complete".to_string()));
+        let second = solve(&core, "e2", TODAY);
+        assert!(second.achievements.contains(&"unit-complete".to_string()));
+        assert!(!second.achievements.contains(&"trail-complete".to_string()));
+    }
+
+    #[test]
+    fn difficulty_achievements() {
+        let (_d, core) = game();
+        assert!(solve(&core, "m1", TODAY).achievements.contains(&"first-medium".to_string()));
+        assert!(solve(&core, "h1", TODAY).achievements.contains(&"first-hard".to_string()));
+    }
+
+    // RF-4, RF-5
+    #[test]
+    fn progress_summarises_everything_home_and_profile_show() {
+        let (_d, core) = game();
+        solve(&core, "e1", "2026-11-10");
+        solve(&core, "m1", "2026-11-11");
+        solve(&core, "h1", "2026-11-11");
+        core.submit_code("e2", WRONG, "2026-11-11").unwrap();
+
+        let p = core.progress("2026-11-12").unwrap();
+        assert_eq!(p.today, "2026-11-12");
+        assert_eq!(p.streak, Streak { current: 2, best: 2, state: DayState::AtRisk });
+        assert_eq!(p.level, LevelInfo { level: 1, xp_total: 70, level_start: 0, next_level_at: 100 });
+        assert_eq!(p.solved, SolvedCounts { easy: 1, medium: 1, hard: 1, total: 3 });
+        assert_eq!(p.problems_total, 6);
+        assert_eq!(
+            p.activity,
+            vec![
+                ActivityDay { date: "2026-11-10".into(), count: 1 },
+                ActivityDay { date: "2026-11-11".into(), count: 2 },
+            ]
+        );
+        assert_eq!(p.achievements.len(), 13);
+        let unlocked: Vec<&str> = p
+            .achievements
+            .iter()
+            .filter(|a| a.unlocked_on.is_some())
+            .map(|a| a.id.as_str())
+            .collect();
+        assert_eq!(unlocked, vec!["first-solve", "first-try", "first-medium", "first-hard", "unit-complete"]);
+        // a próxima sugestão é a primeira não resolvida; e2 já foi tentada
+        let next = p.next_problem.unwrap();
+        assert_eq!((next.slug.as_str(), next.status), ("e2", ProblemStatus::Attempted));
+    }
+
+    #[test]
+    fn activity_window_is_limited_to_the_last_year() {
+        let (_d, core) = game();
+        solve(&core, "e1", "2025-01-01");
+        solve(&core, "e2", "2026-11-12");
+        let p = core.progress("2026-11-12").unwrap();
+        assert_eq!(p.activity.len(), 1);
+        assert_eq!(p.streak.best, 1);
+    }
+
+    #[test]
+    fn next_problem_is_none_when_everything_is_solved() {
+        let (_d, core) = game();
+        for slug in ["e1", "e2", "m1", "h1", "h2", "h3"] {
+            solve(&core, slug, TODAY);
+        }
+        let p = core.progress(TODAY).unwrap();
+        assert!(p.next_problem.is_none());
+        let trail = p.achievements.iter().find(|a| a.id == "trail-complete").unwrap();
+        assert_eq!(trail.unlocked_on.as_deref(), Some(TODAY));
+    }
+
+    #[test]
+    fn invalid_date_is_rejected() {
+        let (_d, core) = game();
+        assert_eq!(core.progress("12/11/2026").unwrap_err().code, "invalid_date");
     }
 }

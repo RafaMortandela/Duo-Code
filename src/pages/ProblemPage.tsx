@@ -11,23 +11,28 @@ import {
   type ProblemDetail,
   type RunOutcome,
 } from "../api/problems";
+import type { Rewards } from "../api/progress";
 import { CodeEditor } from "../components/CodeEditor";
 import { DifficultyBadge, StatusBadge } from "../components/Badges";
 import { Icon } from "../components/Icon";
 import { ResultsPanel, type RunMode } from "../components/ResultsPanel";
+import { RewardsCard } from "../components/RewardsCard";
 import { useToast } from "../components/Toast";
 import { copy } from "../copy";
+import { useProgress } from "../progress/ProgressProvider";
 
 const DRAFT_DELAY_MS = 600;
 
 export function ProblemPage() {
   const { slug = "" } = useParams();
   const toast = useToast();
+  const { refresh: refreshProgress } = useProgress();
 
   const [problem, setProblem] = useState<ProblemDetail | null>(null);
   const [resetKey, setResetKey] = useState(0);
   const [initialCode, setInitialCode] = useState("");
   const [outcome, setOutcome] = useState<RunOutcome | null>(null);
+  const [rewards, setRewards] = useState<Rewards | null>(null);
   const [mode, setMode] = useState<RunMode>("run");
   const [busy, setBusy] = useState(false);
   const [hintsShown, setHintsShown] = useState(0);
@@ -59,6 +64,7 @@ export function ProblemPage() {
     let cancelled = false;
     setProblem(null);
     setOutcome(null);
+    setRewards(null);
     setHintsShown(0);
     setSolution(null);
     setConfirming(null);
@@ -95,13 +101,15 @@ export function ProblemPage() {
       setMode(nextMode);
       flushDraft();
       try {
-        const result =
-          nextMode === "run"
-            ? await runCode(slug, code.current)
-            : await submitCode(slug, code.current);
-        setOutcome(result);
-        if (nextMode === "submit") {
-          const solved = result.verdict === "accepted" || problem.status === "solved";
+        if (nextMode === "run") {
+          setOutcome(await runCode(slug, code.current));
+          setRewards(null);
+        } else {
+          const result = await submitCode(slug, code.current);
+          setOutcome(result.outcome);
+          setRewards(result.rewards);
+          void refreshProgress();
+          const solved = result.outcome.verdict === "accepted" || problem.status === "solved";
           setProblem({
             ...problem,
             status: solved ? "solved" : "attempted",
@@ -114,7 +122,7 @@ export function ProblemPage() {
         setBusy(false);
       }
     },
-    [busy, problem, slug, flushDraft, reportError],
+    [busy, problem, slug, flushDraft, reportError, refreshProgress],
   );
 
   const run = useCallback(() => void execute("run"), [execute]);
@@ -280,7 +288,12 @@ export function ProblemPage() {
           </div>
         </div>
         <div className="results-card card">
-          <ResultsPanel outcome={outcome} mode={mode} busy={busy} />
+          <ResultsPanel
+            outcome={outcome}
+            mode={mode}
+            busy={busy}
+            afterVerdict={rewards && <RewardsCard rewards={rewards} />}
+          />
         </div>
       </div>
     </div>
