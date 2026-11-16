@@ -413,7 +413,11 @@ impl Core {
         self.ensure_unlocked(&*self.conn()?, slug)?;
         let tests: Vec<&TestCase> = p.tests.iter().collect();
         // A trava do banco só é pega depois da execução, para não segurar o app.
-        let outcome = runner::run(&self.python()?, p, code, &tests)?;
+        let mut outcome = runner::run(&self.python()?, p, code, &tests)?;
+        // Os casos ocultos só são revelados quando a questão é vencida (002 RF-6).
+        if !is_accepted(&outcome) {
+            runner::redact_hidden(&mut outcome);
+        }
 
         let mut conn = self.conn()?;
         let tx = conn.transaction()?;
@@ -1484,5 +1488,41 @@ mod tests {
         let again = review(&core, "e1", TUE);
         assert_eq!(again.reason, RewardReason::AlreadySolved);
         assert_eq!(core.progress(TUE).unwrap().level.xp_total, 15);
+    }
+
+    // ---------- 002 CA-13: casos ocultos revelados só quando aceita ----------
+
+    #[test]
+    fn accepted_submission_reveals_the_hidden_cases() {
+        let (_d, core) = core();
+        let out = core.submit_code("add", &add_problem().solution, TODAY).unwrap().outcome;
+        let hidden = out.cases.iter().find(|c| c.hidden).unwrap();
+        let input = hidden.input.as_ref().expect("revealed");
+        assert_eq!((input[0].name.as_str(), &input[0].value), ("a", &serde_json::json!(40)));
+        assert_eq!(hidden.expected, Some(serde_json::json!(42)));
+        assert_eq!(hidden.actual, Some(serde_json::json!(42)));
+    }
+
+    #[test]
+    fn rejected_submission_keeps_every_hidden_case_secret() {
+        let (_d, core) = core();
+        // acerta só o caso oculto (40 + 2): nem assim ele é revelado
+        let code = "def add(a, b):\n    print('peek', a, b)\n    return 42\n";
+        let out = core.submit_code("add", code, TODAY).unwrap().outcome;
+        assert!(!is_accepted(&out));
+        let hidden = out.cases.iter().find(|c| c.hidden).unwrap();
+        assert_eq!(hidden.status, crate::runner::CaseStatus::Passed);
+        assert_eq!((&hidden.input, &hidden.expected, &hidden.actual), (&None, &None, &None));
+        assert_eq!(hidden.stdout, "");
+        // os visíveis continuam completos
+        assert!(out.cases[0].input.is_some());
+    }
+
+    #[test]
+    fn a_solved_problem_still_hides_cases_on_a_later_wrong_submission() {
+        let (_d, core) = core();
+        core.submit_code("add", &add_problem().solution, TODAY).unwrap();
+        let out = core.submit_code("add", "def add(a, b):\n    return 0\n", TODAY).unwrap().outcome;
+        assert!(out.cases.iter().filter(|c| c.hidden).all(|c| c.input.is_none()));
     }
 }

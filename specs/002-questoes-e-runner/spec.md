@@ -33,13 +33,14 @@ Tipos aceitos em `params`/`returns`: `int`, `float`, `str`, `bool`, `list[T]`, `
 - **RF-3** **Executar** roda só os testes com `hidden: false`. **Enviar** roda todos.
 - **RF-4** O runner grava o código e um harness em diretório temporário e executa `python3 -I` em subprocesso; o diretório é removido ao final.
 - **RF-5** Vereditos: `accepted`, `wrong_answer`, `runtime_error`, `time_limit`, `syntax_error`.
-- **RF-6** Por caso de teste, o resultado traz: passou ou não, entrada, esperado, obtido, `stdout` capturado, mensagem de erro com traceback (linhas relativas ao código da usuária) e tempo em ms. Em teste oculto que falha, entrada e esperado não são mostrados.
+- **RF-6** Por caso de teste, o resultado traz: passou ou não, entrada, esperado, obtido, `stdout` capturado, mensagem de erro com traceback (linhas relativas ao código da usuária) e tempo em ms. Em caso oculto, entrada, esperado, obtido e `stdout` não são mostrados enquanto a questão não é vencida. Quando uma submissão é **aceita**, os casos ocultos são revelados por completo, para a usuária ver o que cada um testava.
 - **RF-7** Estourado o tempo limite, o processo é morto; um loop infinito não trava a interface.
 - **RF-8** Toda submissão (**Enviar**) é gravada em `submissions` com código, veredito, data local e duração.
 - **RF-9** O rascunho do editor é salvo automaticamente por questão e restaurado ao reabrir. Há um botão para voltar ao código inicial.
 - **RF-10** Dicas são reveladas uma por vez. **Ver solução** só fica disponível depois de aceita ou após a usuária confirmar que desistiu; desistir não rende XP nem conta para o streak.
 - **RF-11** Se `python3` não for encontrado, o app mostra uma mensagem clara de como instalar, em vez de um erro genérico.
 - **RF-12** `scripts/validate_content.py` verifica, para cada questão, que o esquema é válido, que `solution.py` passa em todos os testes e que `starter.py` não passa.
+- **RF-13** As sugestões de autocompletar do editor aparecem legíveis. Nenhum estilo do app pode vazar para dentro do editor: classes CSS do app não usam os nomes genéricos que o Monaco usa (`main`, `icon`, `toggle`, `contents`…), o que é conferido por `npm run check:literals`.
 
 ## Critérios de aceitação
 
@@ -55,6 +56,8 @@ Tipos aceitos em `params`/`returns`: `int`, `float`, `str`, `bool`, `list[T]`, `
 - **CA-10** Digitar código, fechar o app e reabrir a questão → o código digitado está no editor.
 - **CA-11** Pasta de questão sem `tests.json` → a questão não aparece e o app abre normalmente.
 - **CA-12** O validador falha (código de saída ≠ 0) se alguma solução de referência não passar.
+- **CA-13** Submissão aceita → os casos ocultos vêm com entrada, esperado e obtido. Submissão não aceita → os casos ocultos vêm sem nenhum desses dados, inclusive os que passaram.
+- **CA-14** Com o cursor depois de uma palavra já digitada, abrir as sugestões mostra o texto de cada item dentro da lista. (Conferência no navegador e no build de produção.)
 
 ## Segurança
 

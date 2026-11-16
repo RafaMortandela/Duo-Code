@@ -133,6 +133,10 @@ export const copy = {
       "Desistir não rende XP nem conta para o streak de hoje. Quer ver a solução mesmo assim?",
     giveUpYes: "Quero ver",
     giveUpNo: "Vou tentar mais",
+    next: "Próximo desafio",
+    nextTitle: (title: string) => `Próximo desafio: ${title}`,
+    allSolved: "Você finalizou todos os desafios. Ícone absoluta! 👑",
+    allSolvedNote: "Agora é manter tudo afiado na revisão.",
     pythonMissing:
       "Não encontrei o Python 3 nesta máquina. Instale com: sudo apt install python3",
   },
@@ -158,7 +162,9 @@ export const copy = {
     },
     caseLabel: (n: number) => `Caso ${n}`,
     hiddenLabel: (n: number) => `Oculto ${n}`,
-    hiddenNote: "Caso oculto: a entrada e a resposta esperada não são mostradas.",
+    hiddenNote:
+      "Caso oculto: a entrada e a resposta esperada só aparecem depois que a sua solução for aceita.",
+    hiddenRevealed: "Caso oculto, revelado porque sua solução foi aceita.",
     input: "Entrada",
     expected: "Esperado",
     actual: "Obtido",

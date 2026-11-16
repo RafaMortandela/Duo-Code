@@ -22,7 +22,7 @@ export default function App() {
           <HashRouter>
             <div className="app">
               <Sidebar />
-              <main className="main">
+              <main className="app-main">
                 <Routes>
                   <Route path="/" element={<HomePage />} />
                   <Route path="/trail" element={<TrailPage />} />

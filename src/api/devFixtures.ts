@@ -298,12 +298,12 @@ function trail(): TrailUnit[] {
 
 // ---------- juiz de mentira ----------
 
-function judge(code: string, includeHidden: boolean): RunOutcome {
+function judge(code: string, includeHidden: boolean, revealHidden = false): RunOutcome {
   const selected = cases.filter((c) => includeHidden || !c.hidden);
   const correct = /return\s+a\s*\+\s*b/.test(code);
   const raises = code.includes("raise");
   const results: CaseResult[] = selected.map((c, index) => {
-    const visible = !c.hidden;
+    const visible = !c.hidden || revealHidden;
     const expected = c.a + c.b;
     const passed = correct || (!raises && expected === 0);
     return {
@@ -348,8 +348,10 @@ function judge(code: string, includeHidden: boolean): RunOutcome {
 
 function submit(slug: string, code: string, reviewMode: boolean): SubmitResult {
   const p = open(slug);
-  const outcome = judge(code, true);
-  if (outcome.verdict !== "accepted") return { outcome, rewards: null };
+  const attempt = judge(code, true);
+  if (attempt.verdict !== "accepted") return { outcome: attempt, rewards: null };
+  // aceita: os casos ocultos são revelados
+  const outcome = judge(code, true, true);
 
   const before = progress();
   const lockedBefore = problems.filter(isLocked).map((x) => x.unit);

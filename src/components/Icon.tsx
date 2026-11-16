@@ -322,7 +322,7 @@ const drawings: Record<IconName, Drawing> = {
 export function Icon({ name, size = 22 }: { name: IconName; size?: number }) {
   const drawing = drawings[name];
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true" className="icon">
+    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true" className="duo-icon">
       {drawing.soft && (
         <g fill="currentColor" fillOpacity={0.18} stroke="none">
           {drawing.soft}

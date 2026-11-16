@@ -442,7 +442,7 @@
 }
 
 /* Ajustes: interruptor e campo de horário */
-.toggle {
+.switch {
   display: inline-flex;
   align-items: center;
   gap: var(--space-3);
@@ -450,14 +450,14 @@
   cursor: pointer;
 }
 
-.toggle input {
+.switch input {
   position: absolute;
   opacity: 0;
   width: 1px;
   height: 1px;
 }
 
-.toggle-track {
+.switch-track {
   position: relative;
   flex: none;
   width: 46px;
@@ -467,7 +467,7 @@
   transition: background var(--fast) var(--ease);
 }
 
-.toggle-track::after {
+.switch-track::after {
   content: "";
   position: absolute;
   top: 3px;
@@ -480,15 +480,15 @@
   transition: transform var(--fast) var(--ease);
 }
 
-.toggle input:checked + .toggle-track {
+.switch input:checked + .switch-track {
   background: var(--primary-strong);
 }
 
-.toggle input:checked + .toggle-track::after {
+.switch input:checked + .switch-track::after {
   transform: translateX(20px);
 }
 
-.toggle input:focus-visible + .toggle-track {
+.switch input:focus-visible + .switch-track {
   outline: 3px solid var(--lavender);
   outline-offset: 2px;
 }
@@ -515,7 +515,7 @@
 }
 
 .section > .btn,
-.section > .toggle,
+.section > .switch,
 .section > .field {
   align-self: flex-start;
 }

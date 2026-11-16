@@ -30,6 +30,7 @@ Dar um caminho claro em vez de uma lista solta de questões: unidades por padrã
 - **RF-5** A Home sugere a próxima questão: a primeira não resolvida da unidade liberada mais avançada que ainda não está concluída.
 - **RF-6** Ao liberar uma unidade nova, o resumo de recompensas da submissão avisa.
 - **RF-7** `units.json` que referencia questão inexistente é erro de validação de conteúdo (`validate_content.py`); em execução, a referência é ignorada.
+- **RF-8** Quando uma submissão é aceita (fora do modo revisão), a tela da questão oferece um botão para o **próximo desafio**: a mesma sugestão da Home (RF-5), já considerando a questão recém-resolvida. Se não sobrar nenhuma questão por resolver, não há botão: aparece uma mensagem parabenizando por ter concluído todos os desafios.
 
 ## Critérios de aceitação
 
@@ -41,6 +42,9 @@ Dar um caminho claro em vez de uma lista solta de questões: unidades por padrã
 - **CA-6** A sugestão da Home, com unidade 1 em 2/3 e unidade 2 em 0/3, é a primeira questão da unidade 2.
 - **CA-7** Com todas as unidades concluídas, a Home sugere a fila de revisão em vez de uma questão nova.
 - **CA-8** Acrescentar uma unidade ao `units.json` a faz aparecer na trilha sem alteração de código.
+- **CA-9** Submissão aceita com questões ainda por resolver → aparece o botão "Próximo desafio", que leva à questão sugerida, nunca à própria questão que acabou de ser resolvida.
+- **CA-10** Submissão aceita da última questão que faltava → não há botão, e sim a mensagem de parabéns.
+- **CA-11** Submissão não aceita, ou "Executar" → nem botão nem mensagem.
 
 ## Fora de escopo
 

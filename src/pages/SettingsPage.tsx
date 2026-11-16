@@ -32,14 +32,14 @@ function Toggle({
   onChange: (next: boolean) => void;
 }) {
   return (
-    <label className="toggle">
+    <label className="switch">
       <input
         type="checkbox"
         role="switch"
         checked={checked}
         onChange={(e) => onChange(e.target.checked)}
       />
-      <span className="toggle-track" aria-hidden="true" />
+      <span className="switch-track" aria-hidden="true" />
       {label}
     </label>
   );

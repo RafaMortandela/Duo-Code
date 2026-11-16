@@ -62,7 +62,8 @@ function Field({ label, value }: { label: string; value: string }) {
 }
 
 function CaseDetail({ c }: { c: CaseResult }) {
-  if (c.hidden) {
+  // Caso oculto ainda em segredo: só o status e, se houver, o erro.
+  if (c.hidden && c.input === null) {
     return (
       <div className="case-detail">
         <p className="muted">{copy.results.hiddenNote}</p>
@@ -76,6 +77,7 @@ function CaseDetail({ c }: { c: CaseResult }) {
   const ran = c.status === "passed" || c.status === "wrong_answer";
   return (
     <div className="case-detail">
+      {c.hidden && <p className="muted">{copy.results.hiddenRevealed}</p>}
       <Field label={copy.results.input} value={input} />
       <Field label={copy.results.expected} value={pyRepr(c.expected)} />
       {ran && <Field label={copy.results.actual} value={pyRepr(c.actual)} />}

@@ -1,8 +1,9 @@
 #!/usr/bin/env node
-// Verifica os critérios 001 CA-6/CA-7 (e 007 CA-5/CA-6) em src/ e index.html:
+// Verifica os critérios 001 CA-6/CA-7, 002 RF-13 e 007 CA-5/CA-6 em src/ e index.html:
 //   - cor literal só em src/styles/tokens.css
 //   - texto de interface só em src/copy.ts
 //   - nenhuma URL externa (o app é offline)
+//   - nenhuma classe CSS com nome genérico que o editor Monaco também usa
 // Uso: node scripts/check-literals.mjs   (sai com código 1 se achar algo)
 
 import { readdirSync, readFileSync, statSync } from "node:fs";
@@ -32,6 +33,15 @@ const rules = [
     regex: new RegExp(
       `\\b(?:aria-label|title|placeholder|alt)="[^"]*[${LETTER}][^"]*"`,
     ),
+  },
+  {
+    // O editor Monaco usa estes nomes de classe por dentro. Uma regra global
+    // do app com o mesmo nome vaza para o editor (foi assim que `.main`
+    // deixou as sugestões de autocompletar invisíveis).
+    name: "classe CSS que colide com as do editor (use um nome próprio do app)",
+    applies: (f) => f.endsWith(".css"),
+    regex:
+      /(^|[\s,>+~(])\.(main|contents|left|right|icon|button|toggle|header|body|title|details|label|container|monaco-[\w-]*|codicon[\w-]*)(?![\w-])/,
   },
   {
     name: "URL externa (o app precisa funcionar offline)",

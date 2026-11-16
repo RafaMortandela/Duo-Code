@@ -77,7 +77,7 @@ pub struct CaseResult {
     pub index: usize,
     pub hidden: bool,
     pub status: CaseStatus,
-    /// Ausentes em caso oculto (RF-6).
+    /// Ausentes em caso oculto depois de `redact_hidden` (RF-6).
     pub input: Option<Vec<NamedValue>>,
     pub expected: Option<Value>,
     pub actual: Option<Value>,
@@ -295,8 +295,8 @@ pub fn run(
             index,
             hidden: test.hidden,
             status,
-            input: (!test.hidden).then(|| named_args(problem, test)),
-            expected: (!test.hidden).then(|| test.expected.clone()),
+            input: Some(named_args(problem, test)),
+            expected: Some(test.expected.clone()),
             actual: None,
             stdout: String::new(),
             error: None,
@@ -325,10 +325,8 @@ pub fn run(
         let case = match slot {
             Some(f) => {
                 let mut c = blank(index, f.status);
-                if !c.hidden {
-                    c.actual = f.error.is_none().then_some(f.actual);
-                    c.stdout = f.stdout;
-                }
+                c.actual = f.error.is_none().then_some(f.actual);
+                c.stdout = f.stdout;
                 c.error = f.error;
                 c.time_ms = Some(f.time_ms);
                 c
@@ -353,6 +351,18 @@ pub fn run(
         },
     };
     Ok(outcome(verdict, cases, None))
+}
+
+/// Apaga dos casos ocultos tudo que revela o teste: entrada, esperado, obtido
+/// e saída. Fica só o status, o erro e o tempo. Quem chama decide quando usar:
+/// o resultado completo só vai para a interface quando a submissão é aceita.
+pub fn redact_hidden(outcome: &mut RunOutcome) {
+    for case in outcome.cases.iter_mut().filter(|c| c.hidden) {
+        case.input = None;
+        case.expected = None;
+        case.actual = None;
+        case.stdout.clear();
+    }
 }
 
 fn named_args(problem: &Problem, test: &TestCase) -> Vec<NamedValue> {
@@ -497,8 +507,6 @@ mod tests {
         let out = run_all(&p, code);
         assert_eq!(out.verdict, Verdict::Accepted);
         assert_eq!(out.cases[0].stdout, "debug 1 2\noops\n");
-        // saída de caso oculto não é devolvida
-        assert_eq!(out.cases[2].stdout, "");
     }
 
     #[test]
@@ -589,13 +597,24 @@ mod tests {
     }
 
     #[test]
-    fn hidden_cases_never_reveal_input_or_expected() {
+    fn redact_hidden_removes_everything_that_reveals_a_hidden_test() {
         let p = add_problem();
-        let out = run_all(&p, "def add(a, b):\n    return -1\n");
+        let mut out = run_all(&p, "def add(a, b):\n    print('leak', a, b)\n    return -1\n");
+        // o runner devolve tudo; quem decide o que mostrar é quem chama
+        assert_eq!(out.cases[2].input.as_ref().unwrap()[0].value, json!(40));
+        assert_eq!(out.cases[2].expected, Some(json!(42)));
+
+        redact_hidden(&mut out);
+
         let hidden = &out.cases[2];
         assert!(hidden.hidden);
         assert_eq!(hidden.status, CaseStatus::WrongAnswer);
         assert_eq!((&hidden.input, &hidden.expected, &hidden.actual), (&None, &None, &None));
+        assert_eq!(hidden.stdout, "");
+        assert!(hidden.time_ms.is_some());
+        // os visíveis ficam intactos
+        assert_eq!(out.cases[0].expected, Some(json!(3)));
+        assert_eq!(out.cases[0].stdout, "leak 1 2\n");
     }
 
     #[test]

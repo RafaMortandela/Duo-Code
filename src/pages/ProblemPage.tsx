@@ -9,6 +9,7 @@ import {
   saveDraft,
   submitCode,
   type ProblemDetail,
+  type ProblemSummary,
   type RunOutcome,
 } from "../api/problems";
 import type { Rewards } from "../api/progress";
@@ -27,13 +28,43 @@ import { useProgress } from "../progress/ProgressProvider";
 
 const DRAFT_DELAY_MS = 600;
 
+/**
+ * Depois de uma submissão aceita: o botão para a próxima questão da trilha ou,
+ * se não sobrou nenhuma, os parabéns (004 RF-8).
+ */
+function NextChallenge({ current, next }: { current: string; next: ProblemSummary | null }) {
+  if (next === null) {
+    return (
+      <div className="next-challenge" role="status">
+        <p className="reward-note">{copy.problem.allSolved}</p>
+        <p className="muted">{copy.problem.allSolvedNote}</p>
+      </div>
+    );
+  }
+  // Progresso ainda desatualizado apontaria para a própria questão: não mostra.
+  if (next.slug === current) return null;
+  return (
+    <div className="next-challenge">
+      <Link
+        to={`/problem/${next.slug}`}
+        className="btn btn-primary"
+        aria-label={copy.problem.nextTitle(next.title)}
+      >
+        {copy.problem.next}
+        <Icon name="play" size={18} />
+      </Link>
+      <span className="muted">{next.title}</span>
+    </div>
+  );
+}
+
 export function ProblemPage() {
   const { slug = "" } = useParams();
   // Modo revisão (spec 005): começa do código inicial e não mexe no rascunho.
   const reviewMode = useSearchParams()[0].get("review") === "1";
   const toast = useToast();
   const navigate = useNavigate();
-  const { refresh: refreshProgress } = useProgress();
+  const { progress, refresh: refreshProgress } = useProgress();
 
   const [problem, setProblem] = useState<ProblemDetail | null>(null);
   const [resetKey, setResetKey] = useState(0);
@@ -131,7 +162,8 @@ export function ProblemPage() {
           setOutcome(result.outcome);
           setRewards(result.rewards);
           if (result.rewards && result.rewards.xp_gained > 0) setCelebrations((n) => n + 1);
-          void refreshProgress();
+          // Espera o progresso novo: o "próximo desafio" depende dele.
+          await refreshProgress();
           const solved = result.outcome.verdict === "accepted" || problem.status === "solved";
           setProblem({
             ...problem,
@@ -369,6 +401,10 @@ export function ProblemPage() {
             afterVerdict={
               rewards && (
                 <>
+                  {/* Logo abaixo do veredito, antes das recompensas, para ficar à vista. */}
+                  {!reviewMode && progress && (
+                    <NextChallenge current={slug} next={progress.next_problem} />
+                  )}
                   <RewardsCard rewards={rewards} />
                   {pendingReview && (
                     <ReviewRating

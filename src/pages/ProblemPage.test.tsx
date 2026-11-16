@@ -65,9 +65,80 @@ describe("tela de questão (spec 002)", () => {
       expect(screen.getByRole("status").textContent).toContain(copy.results.verdict.accepted),
     );
     expect(screen.getByText(copy.status.solved)).toBeTruthy();
-    // Enviar inclui o caso oculto, sem revelar a entrada
+    // 002 CA-13: aceita, o caso oculto é revelado por completo
     await user.click(screen.getByRole("tab", { name: copy.results.hiddenLabel(1) }));
-    expect(screen.getByText(copy.results.hiddenNote)).toBeTruthy();
+    const panel = screen.getByRole("tabpanel");
+    expect(within(panel).getByText(copy.results.hiddenRevealed)).toBeTruthy();
+    expect(within(panel).getByText(/a = 40\s+b = 2/)).toBeTruthy();
+    expect(within(panel).getAllByText("42")).toHaveLength(2); // esperado e obtido
+    expect(screen.queryByText(copy.results.hiddenNote)).toBeNull();
+  });
+
+  // 002 CA-13
+  it("submissão não aceita mantém o caso oculto em segredo", async () => {
+    const user = userEvent.setup();
+    const { editor } = await openProblem();
+    type(editor, WRONG);
+    await user.click(screen.getByRole("button", { name: copy.problem.submit }));
+    await screen.findByText(copy.results.verdict.wrong_answer, { exact: false });
+
+    await user.click(screen.getByRole("tab", { name: copy.results.hiddenLabel(1) }));
+    const panel = screen.getByRole("tabpanel");
+    expect(within(panel).getByText(copy.results.hiddenNote)).toBeTruthy();
+    expect(within(panel).queryByText(/a = 40/)).toBeNull();
+    expect(within(panel).queryByText(copy.results.input)).toBeNull();
+  });
+
+  // 004 RF-8
+  it("aceita com questões por resolver: botão para o próximo desafio", async () => {
+    const user = userEvent.setup();
+    const { editor } = await openProblem();
+    type(editor, CORRECT);
+    await user.click(screen.getByRole("button", { name: copy.problem.submit }));
+
+    const next = await screen.findByRole("link", {
+      name: copy.problem.nextTitle("Demo: Add Again"),
+    });
+    expect(next.getAttribute("href")).toBe("#/problem/demo-add-again");
+    expect(screen.queryByText(copy.problem.allSolved)).toBeNull();
+
+    // o botão leva à próxima questão, já com o editor dela
+    await user.click(next);
+    expect((await screen.findByRole("heading", { level: 1 })).textContent).toBe("Demo: Add Again");
+    expect(screen.queryByRole("link", { name: /Próximo desafio/ })).toBeNull();
+  });
+
+  // 004 CA-10
+  it("aceita a última questão: parabéns no lugar do botão", async () => {
+    const user = userEvent.setup();
+    const { editor } = await openProblem();
+    type(editor, CORRECT);
+    await user.click(screen.getByRole("button", { name: copy.problem.submit }));
+    await user.click(
+      await screen.findByRole("link", { name: copy.problem.nextTitle("Demo: Add Again") }),
+    );
+    await screen.findByRole("heading", { name: "Demo: Add Again" });
+    type(screen.getByLabelText(copy.problem.editorLabel), CORRECT);
+    await user.click(screen.getByRole("button", { name: copy.problem.submit }));
+
+    expect(await screen.findByText(copy.problem.allSolved)).toBeTruthy();
+    expect(screen.queryByRole("link", { name: /Próximo desafio/ })).toBeNull();
+  });
+
+  // 004 CA-11
+  it("Executar e submissão errada não oferecem próximo desafio", async () => {
+    const user = userEvent.setup();
+    const { editor } = await openProblem();
+    type(editor, CORRECT);
+    await user.click(screen.getByRole("button", { name: copy.problem.run }));
+    await screen.findByText(copy.results.verdict.acceptedRun, { exact: false });
+    expect(screen.queryByRole("link", { name: /Próximo desafio/ })).toBeNull();
+
+    type(editor, WRONG);
+    await user.click(screen.getByRole("button", { name: copy.problem.submit }));
+    await screen.findByText(copy.results.verdict.wrong_answer, { exact: false });
+    expect(screen.queryByRole("link", { name: /Próximo desafio/ })).toBeNull();
+    expect(screen.queryByText(copy.problem.allSolved)).toBeNull();
   });
 
   it("erro em tempo de execução mostra o traceback e a linha", async () => {

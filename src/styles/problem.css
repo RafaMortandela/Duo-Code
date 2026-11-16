@@ -1,6 +1,6 @@
 /* Tela de questão: enunciado à esquerda, editor e resultado à direita. */
 
-.main:has(.problem) {
+.app-main:has(.problem) {
   padding: var(--space-4);
   overflow: hidden;
 }
@@ -326,4 +326,18 @@
 
 .result-value[data-tone="error"] {
   border-color: var(--error);
+}
+
+/* Próximo desafio, depois de uma submissão aceita */
+.next-challenge {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.next-challenge[role="status"] {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-1);
 }
