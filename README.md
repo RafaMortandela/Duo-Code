@@ -78,47 +78,144 @@ O histórico de commits segue as specs, uma etapa por commit.
 
 ## Rodando na sua máquina
 
-> O projeto foi desenvolvido e testado em **Linux (Ubuntu)**. O Tauri também funciona em macOS e Windows, mas eu não testei o Duo Code nesses sistemas.
-
-### 1. Clone o repositório
-
-```bash
-git clone https://github.com/RafaMortandela/Duo-Code.git
-cd Duo-Code
-```
-
-### 2. Instale os pré-requisitos
-
-Você precisa de quatro coisas:
+O Duo Code roda em **Linux**, **macOS** e **Windows**. Em qualquer um deles você precisa de quatro coisas:
 
 | O quê | Versão | Para quê |
 |---|---|---|
 | Node.js | 22 (mínimo 20.19) | Frontend e ferramentas |
 | Rust | estável | Backend do Tauri |
 | Python | 3.9 ou mais novo | Rodar as suas soluções |
-| Bibliotecas de sistema do Tauri | — | Janela, bandeja e notificações |
+| Dependências de sistema do Tauri | — | Janela, bandeja e notificações |
 
-**No Ubuntu/Debian:**
+> **O que foi testado:** eu desenvolvi e testei o app em **Linux (Ubuntu)**. As instruções de macOS e Windows seguem os [pré-requisitos oficiais do Tauri](https://v2.tauri.app/start/prerequisites/), mas eu não rodei o Duo Code nesses sistemas. Se algo não funcionar, abra uma issue.
+
+O caminho é o mesmo nos três: **(1)** instale os pré-requisitos do seu sistema, **(2)** clone o repositório, **(3)** instale as dependências e abra o app.
+
+### 1. Pré-requisitos
+
+Siga só a parte do seu sistema.
+
+#### Linux
+
+**Ubuntu, Debian e derivados** — bibliotecas do Tauri e Python:
 
 ```bash
-sudo apt install libwebkit2gtk-4.1-dev build-essential curl wget file libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev python3
+sudo apt update
 ```
+
+```bash
+sudo apt install libwebkit2gtk-4.1-dev build-essential curl wget file libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev python3 git
+```
+
+**Fedora, Arch, openSUSE e outras** — os nomes dos pacotes mudam. A [página do Tauri](https://v2.tauri.app/start/prerequisites/#linux) traz o comando de cada distribuição; instale também `python3` e `git`.
+
+Depois, em qualquer distribuição:
+
+Rust:
 
 ```bash
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 ```
 
-Depois de instalar o Rust, abra um novo terminal. Para o Node.js, use o [nvm](https://github.com/nvm-sh/nvm) (`nvm install 22`) ou o instalador de [nodejs.org](https://nodejs.org).
+Node.js 22, usando o [nvm](https://github.com/nvm-sh/nvm):
 
-**Em outros sistemas**, siga a [página de pré-requisitos do Tauri](https://tauri.app/start/prerequisites/).
+```bash
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash
+```
 
-### 3. Confira o ambiente
+Feche e abra o terminal, e então:
+
+```bash
+nvm install 22
+```
+
+> No GNOME, o ícone da bandeja só aparece com a extensão AppIndicator. O Ubuntu já vem com ela; em outras distribuições talvez seja preciso instalar. Sem o ícone, o app continua rodando depois que você fecha a janela: para trazê-la de volta, abra o Duo Code de novo pelo menu de aplicativos.
+
+#### macOS
+
+Requer macOS Catalina (10.15) ou mais novo.
+
+Ferramentas de linha de comando do Xcode (compilador, `git` e um `python3`):
+
+```bash
+xcode-select --install
+```
+
+Rust:
+
+```bash
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+```
+
+Node.js 22 — com o [Homebrew](https://brew.sh):
+
+```bash
+brew install node@22
+```
+
+ou baixe o instalador em [nodejs.org](https://nodejs.org).
+
+Confira o Python, que precisa ser 3.9 ou mais novo:
+
+```bash
+python3 --version
+```
+
+Se for mais antigo, instale um atual com `brew install python`.
+
+#### Windows
+
+Requer Windows 10 ou 11. Use o **PowerShell**.
+
+1. **Microsoft C++ Build Tools.** Baixe o instalador em [visualstudio.microsoft.com/visual-cpp-build-tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/) e, durante a instalação, marque **"Desenvolvimento para desktop com C++"**. Sem isso o Rust não compila.
+
+2. **WebView2.** Já vem instalado no Windows 10 (versão 1803 em diante) e no Windows 11. Em versões mais antigas, instale o "Evergreen Bootstrapper" da [página do WebView2](https://developer.microsoft.com/microsoft-edge/webview2/#download-section).
+
+3. **Git, Rust, Node.js e Python**, pelo `winget`:
+
+```powershell
+winget install --id Git.Git
+```
+
+```powershell
+winget install --id Rustlang.Rustup
+```
+
+```powershell
+winget install --id OpenJS.NodeJS.LTS
+```
+
+```powershell
+winget install --id Python.Python.3.12
+```
+
+4. **Feche e abra o PowerShell** para que os comandos novos sejam reconhecidos, e confira:
+
+```powershell
+node -v; cargo -V; python --version
+```
+
+> No Windows o comando é `python`, não `python3`. O Duo Code procura os dois, então não é preciso configurar nada. Se `python` abrir a Microsoft Store em vez de mostrar a versão, o Python não está no PATH: reinstale marcando "Add python.exe to PATH".
+
+### 2. Clone o repositório
+
+```bash
+git clone https://github.com/RafaMortandela/Duo-Code.git
+```
+
+```bash
+cd Duo-Code
+```
+
+### 3. Confira o ambiente (Linux e macOS)
 
 O repositório traz um verificador que diz o que está faltando e o comando para instalar. Ele não instala nada sozinho.
 
 ```bash
 npm run setup
 ```
+
+No Windows o verificador só roda dentro do Git Bash, porque é um script de shell. No PowerShell, use o comando de conferência do passo 1.
 
 ### 4. Instale as dependências e abra o app
 
@@ -134,11 +231,15 @@ A primeira execução compila o backend em Rust e leva alguns minutos. As seguin
 
 ### Gerar o instalador
 
-```bash
-npm run tauri build -- --bundles deb
-```
+Escolha o formato do seu sistema:
 
-O pacote `.deb` fica em `src-tauri/target/release/bundle/deb/`. Sem a opção `--bundles`, o Tauri tenta gerar todos os formatos do seu sistema; eu só testei o `.deb`.
+| Sistema | Comando | Resultado |
+|---|---|---|
+| Linux | `npm run tauri build -- --bundles deb` | `.deb` |
+| macOS | `npm run tauri build -- --bundles dmg` | `.dmg` |
+| Windows | `npm run tauri build -- --bundles nsis` | instalador `.exe` |
+
+Os arquivos ficam em `src-tauri/target/release/bundle/`. Eu só testei o `.deb`.
 
 ### Só a interface, no navegador
 
@@ -152,7 +253,15 @@ Abra `http://localhost:1420`. Nesse modo não existe backend: o app usa dados de
 
 ### Onde ficam os seus dados
 
-O progresso fica em `duo-code.db`, dentro do diretório de dados do app (no Linux, `~/.local/share/com.duocode.app/`). Apagar esse arquivo zera tudo.
+O progresso fica no arquivo `duo-code.db`, dentro do diretório de dados do app:
+
+| Sistema | Pasta |
+|---|---|
+| Linux | `~/.local/share/com.duocode.app/` |
+| macOS | `~/Library/Application Support/com.duocode.app/` |
+| Windows | `%APPDATA%\com.duocode.app\` |
+
+Apagar esse arquivo zera tudo.
 
 ## Testes e verificações
 
@@ -214,7 +323,7 @@ Para escrever com mais segurança, use a ferramenta em [`scripts/authoring/`](sc
 
 - **Só Python.** Outras linguagens ficaram fora do MVP.
 - **Sem sandbox forte.** O seu código roda com as suas permissões, isolado apenas por processo, diretório temporário e tempo limite. Isso é aceitável porque o código executado é o que você mesma escreveu; não rode soluções de terceiros que você não leu.
-- **Testado apenas em Linux.**
+- **Testado apenas em Linux.** As instruções de macOS e Windows existem, mas o app não foi executado nesses sistemas.
 - **Fora do MVP:** streak freeze, loja, ranking, contas e sincronização.
 
 ## Licença
