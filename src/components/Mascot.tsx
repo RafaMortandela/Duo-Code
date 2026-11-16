@@ -1,13 +1,14 @@
 // Mascote do Duo Code (spec 007): uma gatinha com laço e notebook, em quatro
 // poses. É decorativa: nenhuma informação depende dela, por isso `aria-hidden`.
-// Todas as cores vêm dos tokens do tema.
+// As cores vêm dos tokens, mas a pelagem e o contorno usam tokens próprios que
+// não mudam no modo escuro: a mascote é igual nos dois modos.
 
 import { copy } from "../copy";
 
 export type MascotPose = "happy" | "celebrating" | "sleepy" | "sad";
 
-const INK = "var(--text)";
-const FUR = "var(--surface)";
+const INK = "var(--mascot-ink)";
+const FUR = "var(--mascot-fur)";
 const BLUSH = "var(--pastel)";
 const BOW = "var(--primary)";
 
@@ -153,7 +154,7 @@ export function Mascot({ pose, size = 120 }: { pose: MascotPose; size?: number }
         fontFamily="var(--font-code)"
         fontWeight={700}
         fontSize={17}
-        fill="var(--on-accent)"
+        fill={INK}
       >
         {copy.app.mark}
       </text>

@@ -82,6 +82,15 @@ describe.each([
 });
 
 describe("tokens", () => {
+  it("a mascote tem as mesmas cores nos dois modos", () => {
+    for (const name of ["--mascot-fur", "--mascot-ink", "--pastel", "--primary", "--lavender", "--peach"]) {
+      expect(light[name], name).toBeDefined();
+      expect(dark[name], name).toBe(light[name]);
+    }
+    expect(contrast(light["--mascot-ink"], light["--mascot-fur"])).toBeGreaterThanOrEqual(TEXT);
+    expect(contrast(light["--mascot-ink"], light["--pastel"])).toBeGreaterThanOrEqual(TEXT);
+  });
+
   it("o modo escuro redefine as cores de fundo e de texto", () => {
     for (const name of ["--bg", "--surface", "--surface-alt", "--text", "--text-muted"]) {
       expect(dark[name]).not.toBe(light[name]);

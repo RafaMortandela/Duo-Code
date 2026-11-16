@@ -28,6 +28,10 @@
   --syntax-number: #7b4fc9;
   --success-text: #187452;
 
+  /* mascote: iguais nos dois modos, de propósito (não são redefinidas no escuro) */
+  --mascot-fur: #ffffff;
+  --mascot-ink: #4a1f36;
+
   /* forma */
   --radius-field: 12px;
   --radius-card: 20px;
