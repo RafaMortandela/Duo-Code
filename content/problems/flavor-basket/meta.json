@@ -1,0 +1,34 @@
+{
+  "id": "flavor-basket",
+  "title": "Flavor Basket",
+  "difficulty": "medium",
+  "unit": "sliding-window",
+  "tags": [
+    "sliding window",
+    "hash map",
+    "at most k distinct"
+  ],
+  "entrypoint": "longest_basket",
+  "params": [
+    {
+      "name": "flavors",
+      "type": "list[int]"
+    },
+    {
+      "name": "k",
+      "type": "int"
+    }
+  ],
+  "returns": "int",
+  "comparator": "exact",
+  "time_limit_ms": 2000,
+  "hints": [
+    "Keep a window and the count of each flavor inside it.",
+    "Add the next jar on the right. If the window now has more than k flavors, remove jars from the left until it is valid again.",
+    "A flavor leaves the basket only when its count reaches zero: delete the key then, so len(counts) is the number of flavors."
+  ],
+  "complexity": {
+    "time": "O(n)",
+    "space": "O(k)"
+  }
+}

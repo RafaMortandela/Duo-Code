@@ -1,0 +1,30 @@
+{
+  "id": "catalog-check",
+  "title": "Catalog Check",
+  "difficulty": "medium",
+  "unit": "trees",
+  "tags": [
+    "binary search tree",
+    "depth-first search",
+    "bounds"
+  ],
+  "entrypoint": "is_valid_catalog",
+  "params": [
+    {
+      "name": "root",
+      "type": "TreeNode"
+    }
+  ],
+  "returns": "bool",
+  "comparator": "exact",
+  "time_limit_ms": 2000,
+  "hints": [
+    "Checking left child < node < right child at every node is not enough. Try [5, 1, 8, None, None, 3, 9].",
+    "Every node must respect all of its ancestors, which amounts to an allowed range (low, high) for its value.",
+    "Going left narrows the upper limit to the current value; going right raises the lower limit. Pass both limits down the recursion."
+  ],
+  "complexity": {
+    "time": "O(n)",
+    "space": "O(h), h = height"
+  }
+}

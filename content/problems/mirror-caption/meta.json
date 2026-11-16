@@ -1,0 +1,29 @@
+{
+  "id": "mirror-caption",
+  "title": "Mirror Caption",
+  "difficulty": "easy",
+  "unit": "two-pointers",
+  "tags": [
+    "two pointers",
+    "string"
+  ],
+  "entrypoint": "is_mirror",
+  "params": [
+    {
+      "name": "caption",
+      "type": "str"
+    }
+  ],
+  "returns": "bool",
+  "comparator": "exact",
+  "time_limit_ms": 2000,
+  "hints": [
+    "Comparing the first counted character with the last, then the second with the second-to-last, is all you need.",
+    "Keep one index at each end and move them toward each other.",
+    "When an index points at something that is not a letter or digit, advance just that index and compare again."
+  ],
+  "complexity": {
+    "time": "O(n)",
+    "space": "O(1)"
+  }
+}

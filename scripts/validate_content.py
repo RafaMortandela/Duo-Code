@@ -22,12 +22,14 @@ import re
 import subprocess
 import sys
 import tempfile
-import time
+import threading
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 HARNESS = ROOT / "src-tauri" / "src" / "runner" / "harness.py"
 TOKEN = "validate"
+# Tempo para o interpretador subir, e entre um caso e o seguinte.
+STARTUP_SECONDS = 20
 BASE_TYPES = {"int", "float", "str", "bool", "ListNode", "TreeNode"}
 DIFFICULTIES = {"easy", "medium", "hard"}
 COMPARATORS = {"exact", "unordered", "float"}
@@ -117,15 +119,26 @@ def run(meta, tests, code):
         )
         statuses = ["not_run"] * len(tests)
         times = [None] * len(tests)
-        # Prazo global simples: o harness já marca time_limit em caso que termina
-        # atrasado; aqui só evitamos ficar presas em um laço infinito.
-        deadline = time.monotonic() + 10 + len(tests) * (limit_ms / 1000 + 1)
         fatal = None
         current = None
+
+        # O harness só marca time_limit em caso que termina atrasado. Um caso
+        # que nunca termina precisa ser morto por fora: um temporizador é
+        # rearmado a cada evento e mata o processo se o próximo não chegar.
+        timer = None
+
+        def arm(seconds):
+            nonlocal timer
+            if timer is not None:
+                timer.cancel()
+            timer = threading.Timer(seconds, proc.kill)
+            timer.daemon = True
+            timer.start()
+
+        case_budget = limit_ms / 1000 + 1.0
+        arm(STARTUP_SECONDS)
         try:
             for line in proc.stdout:
-                if time.monotonic() > deadline:
-                    break
                 if not line.startswith(TOKEN + " "):
                     continue
                 event = json.loads(line[len(TOKEN) + 1:])
@@ -135,13 +148,19 @@ def run(meta, tests, code):
                     break
                 if kind == "start":
                     current = event["index"]
+                    arm(case_budget)
                 elif kind == "result":
                     statuses[event["index"]] = event["status"]
                     times[event["index"]] = event["time_ms"]
                     current = None
+                    arm(STARTUP_SECONDS)
+                elif kind == "loading":
+                    arm(case_budget)
                 elif kind == "done":
                     break
         finally:
+            if timer is not None:
+                timer.cancel()
             proc.kill()
             proc.wait()
         if fatal:

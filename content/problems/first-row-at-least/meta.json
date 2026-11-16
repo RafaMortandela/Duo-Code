@@ -1,0 +1,33 @@
+{
+  "id": "first-row-at-least",
+  "title": "First Row At Least",
+  "difficulty": "easy",
+  "unit": "binary-search",
+  "tags": [
+    "binary search",
+    "lower bound"
+  ],
+  "entrypoint": "first_at_least",
+  "params": [
+    {
+      "name": "rows",
+      "type": "list[int]"
+    },
+    {
+      "name": "target",
+      "type": "int"
+    }
+  ],
+  "returns": "int",
+  "comparator": "exact",
+  "time_limit_ms": 2000,
+  "hints": [
+    "The list is sorted, so looking at the middle entry tells you which half can be thrown away.",
+    "If rows[mid] >= target, the answer is mid or something to its left. Otherwise it is strictly to the right.",
+    "Search the range [0, len(rows)] with low < high as the loop condition; when it ends, low is the answer."
+  ],
+  "complexity": {
+    "time": "O(log n)",
+    "space": "O(1)"
+  }
+}

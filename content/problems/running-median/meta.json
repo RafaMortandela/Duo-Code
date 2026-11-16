@@ -1,0 +1,30 @@
+{
+  "id": "running-median",
+  "title": "Running Median",
+  "difficulty": "hard",
+  "unit": "heap",
+  "tags": [
+    "heap",
+    "two heaps",
+    "streaming"
+  ],
+  "entrypoint": "running_medians",
+  "params": [
+    {
+      "name": "values",
+      "type": "list[int]"
+    }
+  ],
+  "returns": "list[float]",
+  "comparator": "float",
+  "time_limit_ms": 2000,
+  "hints": [
+    "The median only depends on the one or two values in the middle. You do not need the rest fully sorted.",
+    "Keep the smaller half and the larger half separately. The median sits at the boundary: the largest of the small half and the smallest of the large half.",
+    "Use a max-heap for the lower half and a min-heap for the upper half, and rebalance after each insert so their sizes differ by at most one."
+  ],
+  "complexity": {
+    "time": "O(n log n)",
+    "space": "O(n)"
+  }
+}

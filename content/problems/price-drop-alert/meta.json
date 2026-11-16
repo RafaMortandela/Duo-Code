@@ -1,0 +1,28 @@
+{
+  "id": "price-drop-alert",
+  "title": "Price Drop Alert",
+  "difficulty": "medium",
+  "unit": "stack",
+  "tags": [
+    "monotonic stack"
+  ],
+  "entrypoint": "days_until_drop",
+  "params": [
+    {
+      "name": "prices",
+      "type": "list[int]"
+    }
+  ],
+  "returns": "list[int]",
+  "comparator": "exact",
+  "time_limit_ms": 2000,
+  "hints": [
+    "When a low price shows up, it answers the question for several earlier days at once. Which ones?",
+    "Keep the days that are still waiting. A new price resolves every waiting day whose price is higher.",
+    "Use a stack of day indices. Pop while the price at the top is greater than today's, recording today minus that day."
+  ],
+  "complexity": {
+    "time": "O(n)",
+    "space": "O(n)"
+  }
+}

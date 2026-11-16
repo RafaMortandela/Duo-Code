@@ -1,0 +1,29 @@
+{
+  "id": "stair-hops",
+  "title": "Stair Hops",
+  "difficulty": "easy",
+  "unit": "dynamic-programming",
+  "tags": [
+    "dynamic programming",
+    "1D"
+  ],
+  "entrypoint": "count_routes",
+  "params": [
+    {
+      "name": "n",
+      "type": "int"
+    }
+  ],
+  "returns": "int",
+  "comparator": "exact",
+  "time_limit_ms": 2000,
+  "hints": [
+    "Think about the very last hop. From which steps could it have started?",
+    "From n-1, n-2 or n-3. So the number of routes to n is the sum of the routes to those three steps.",
+    "Compute the answers from the bottom up, keeping only the last three, so nothing is recomputed."
+  ],
+  "complexity": {
+    "time": "O(n)",
+    "space": "O(1)"
+  }
+}

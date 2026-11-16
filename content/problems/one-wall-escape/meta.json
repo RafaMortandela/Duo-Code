@@ -1,0 +1,30 @@
+{
+  "id": "one-wall-escape",
+  "title": "One Wall Escape",
+  "difficulty": "hard",
+  "unit": "graphs",
+  "tags": [
+    "breadth-first search",
+    "shortest path",
+    "state space"
+  ],
+  "entrypoint": "shortest_escape",
+  "params": [
+    {
+      "name": "room",
+      "type": "list[list[int]]"
+    }
+  ],
+  "returns": "int",
+  "comparator": "exact",
+  "time_limit_ms": 2000,
+  "hints": [
+    "Without the hammer this is a standard shortest path on a grid: breadth-first search.",
+    "With the hammer, the same cell can be worth visiting twice: once still holding the hammer and once after using it.",
+    "Run BFS over states (row, col, hammer used). Moving into a wall is allowed only from a state where the hammer is unused."
+  ],
+  "complexity": {
+    "time": "O(rows * cols)",
+    "space": "O(rows * cols)"
+  }
+}

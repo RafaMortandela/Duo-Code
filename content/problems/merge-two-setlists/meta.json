@@ -1,0 +1,34 @@
+{
+  "id": "merge-two-setlists",
+  "title": "Merge Two Setlists",
+  "difficulty": "medium",
+  "unit": "linked-list",
+  "tags": [
+    "linked list",
+    "merge",
+    "dummy node"
+  ],
+  "entrypoint": "merge_setlists",
+  "params": [
+    {
+      "name": "first",
+      "type": "ListNode"
+    },
+    {
+      "name": "second",
+      "type": "ListNode"
+    }
+  ],
+  "returns": "ListNode",
+  "comparator": "exact",
+  "time_limit_ms": 2000,
+  "hints": [
+    "At every step the next node of the result is the smaller of the two current heads.",
+    "Keep a `tail` pointer to the last node of the merged list and attach the smaller head to it.",
+    "Start from a dummy node so the first attachment is not a special case; when one list ends, attach the rest of the other."
+  ],
+  "complexity": {
+    "time": "O(n + m)",
+    "space": "O(1)"
+  }
+}

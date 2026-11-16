@@ -1,0 +1,30 @@
+{
+  "id": "count-the-blobs",
+  "title": "Count the Blobs",
+  "difficulty": "medium",
+  "unit": "graphs",
+  "tags": [
+    "grid",
+    "flood fill",
+    "connected components"
+  ],
+  "entrypoint": "count_blobs",
+  "params": [
+    {
+      "name": "image",
+      "type": "list[list[int]]"
+    }
+  ],
+  "returns": "int",
+  "comparator": "exact",
+  "time_limit_ms": 2000,
+  "hints": [
+    "Scan the grid. The first time you meet an inked pixel that you have not visited, you have found a new blob.",
+    "Before moving on, visit every pixel connected to it, so the rest of that blob is not counted again.",
+    "Keep a `seen` grid. From each new pixel, flood with a stack or queue over the four neighbours, marking as you push."
+  ],
+  "complexity": {
+    "time": "O(rows * cols)",
+    "space": "O(rows * cols)"
+  }
+}

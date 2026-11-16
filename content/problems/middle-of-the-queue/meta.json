@@ -1,0 +1,29 @@
+{
+  "id": "middle-of-the-queue",
+  "title": "Middle of the Queue",
+  "difficulty": "easy",
+  "unit": "linked-list",
+  "tags": [
+    "linked list",
+    "fast and slow pointers"
+  ],
+  "entrypoint": "middle_track",
+  "params": [
+    {
+      "name": "head",
+      "type": "ListNode"
+    }
+  ],
+  "returns": "ListNode",
+  "comparator": "exact",
+  "time_limit_ms": 2000,
+  "hints": [
+    "Counting the nodes first and then walking half of them works, but takes two passes.",
+    "Imagine two runners on the list, one twice as fast as the other. Where is the slow one when the fast one finishes?",
+    "Advance slow by one and fast by two while fast and fast.next exist. Return slow."
+  ],
+  "complexity": {
+    "time": "O(n)",
+    "space": "O(1)"
+  }
+}

@@ -1,0 +1,33 @@
+{
+  "id": "top-scores",
+  "title": "Top Scores",
+  "difficulty": "medium",
+  "unit": "heap",
+  "tags": [
+    "heap",
+    "top k"
+  ],
+  "entrypoint": "top_scores",
+  "params": [
+    {
+      "name": "scores",
+      "type": "list[int]"
+    },
+    {
+      "name": "k",
+      "type": "int"
+    }
+  ],
+  "returns": "list[int]",
+  "comparator": "exact",
+  "time_limit_ms": 2000,
+  "hints": [
+    "You only ever need to remember k scores. Which of them is the first to be thrown out when a better one arrives?",
+    "The smallest of the kept scores. A min-heap gives you the smallest element instantly.",
+    "Keep a min-heap of size k: push while it is not full, otherwise replace the top when the new score is larger. Sort the heap at the end."
+  ],
+  "complexity": {
+    "time": "O(n log k)",
+    "space": "O(k)"
+  }
+}

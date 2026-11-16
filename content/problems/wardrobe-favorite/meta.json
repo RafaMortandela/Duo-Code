@@ -1,0 +1,29 @@
+{
+  "id": "wardrobe-favorite",
+  "title": "Wardrobe Favorite",
+  "difficulty": "easy",
+  "unit": "arrays-hashing",
+  "tags": [
+    "hash map",
+    "counting"
+  ],
+  "entrypoint": "favorite_color",
+  "params": [
+    {
+      "name": "colors",
+      "type": "list[str]"
+    }
+  ],
+  "returns": "str",
+  "comparator": "exact",
+  "time_limit_ms": 2000,
+  "hints": [
+    "You need to know how many times each color appears. What structure maps a color to a number?",
+    "Count everything in one pass with a dictionary, then look only at the distinct colors.",
+    "To break ties, compare by (-count, name): the largest count wins, then the smallest name."
+  ],
+  "complexity": {
+    "time": "O(n)",
+    "space": "O(k), k = distinct colors"
+  }
+}

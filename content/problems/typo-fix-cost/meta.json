@@ -1,0 +1,34 @@
+{
+  "id": "typo-fix-cost",
+  "title": "Typo Fix Cost",
+  "difficulty": "hard",
+  "unit": "dynamic-programming",
+  "tags": [
+    "dynamic programming",
+    "two sequences",
+    "edit distance"
+  ],
+  "entrypoint": "fix_cost",
+  "params": [
+    {
+      "name": "typed",
+      "type": "str"
+    },
+    {
+      "name": "intended",
+      "type": "str"
+    }
+  ],
+  "returns": "int",
+  "comparator": "exact",
+  "time_limit_ms": 2000,
+  "hints": [
+    "Compare the last characters. If they are equal, they cost nothing and you can drop both.",
+    "If they differ, the last edit is a replace, a delete or an insert, each leaving a smaller pair of prefixes to fix.",
+    "Fill a table cost[i][j] for prefixes of length i and j, with cost[i][0] = i and cost[0][j] = j. Plain recursion repeats the same prefixes exponentially."
+  ],
+  "complexity": {
+    "time": "O(n * m)",
+    "space": "O(m)"
+  }
+}

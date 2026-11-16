@@ -1,0 +1,29 @@
+{
+  "id": "sold-out-to-the-back",
+  "title": "Sold Out to the Back",
+  "difficulty": "easy",
+  "unit": "two-pointers",
+  "tags": [
+    "two pointers",
+    "in-place"
+  ],
+  "entrypoint": "push_sold_out",
+  "params": [
+    {
+      "name": "stock",
+      "type": "list[int]"
+    }
+  ],
+  "returns": "list[int]",
+  "comparator": "exact",
+  "time_limit_ms": 2000,
+  "hints": [
+    "Think of two positions: where you are reading, and where the next available product should be written.",
+    "The write position only advances when you place an available product there.",
+    "Swapping stock[write] with stock[read] moves the product forward and pushes a zero back in one step."
+  ],
+  "complexity": {
+    "time": "O(n)",
+    "space": "O(1)"
+  }
+}

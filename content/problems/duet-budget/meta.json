@@ -1,0 +1,34 @@
+{
+  "id": "duet-budget",
+  "title": "Duet Budget",
+  "difficulty": "medium",
+  "unit": "two-pointers",
+  "tags": [
+    "two pointers",
+    "sorted array",
+    "counting"
+  ],
+  "entrypoint": "count_duets",
+  "params": [
+    {
+      "name": "prices",
+      "type": "list[int]"
+    },
+    {
+      "name": "budget",
+      "type": "int"
+    }
+  ],
+  "returns": "int",
+  "comparator": "exact",
+  "time_limit_ms": 2000,
+  "hints": [
+    "The list is sorted. Look at the cheapest and the most expensive ticket together: what does their sum tell you?",
+    "If cheapest + priciest fits, the cheapest ticket fits with every ticket between them too. Count them in one step.",
+    "If it does not fit, the priciest ticket cannot pair with anything left. Move that pointer inward and repeat."
+  ],
+  "complexity": {
+    "time": "O(n)",
+    "space": "O(1)"
+  }
+}

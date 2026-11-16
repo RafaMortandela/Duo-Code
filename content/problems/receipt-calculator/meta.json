@@ -1,0 +1,29 @@
+{
+  "id": "receipt-calculator",
+  "title": "Receipt Calculator",
+  "difficulty": "medium",
+  "unit": "stack",
+  "tags": [
+    "stack",
+    "expression evaluation"
+  ],
+  "entrypoint": "evaluate_receipt",
+  "params": [
+    {
+      "name": "tokens",
+      "type": "list[str]"
+    }
+  ],
+  "returns": "int",
+  "comparator": "exact",
+  "time_limit_ms": 2000,
+  "hints": [
+    "An operator always uses the two values that came most recently before it. Which structure gives you the most recent items?",
+    "Push numbers. On an operator, pop two values, compute, and push the result back.",
+    "The first value you pop is the right-hand operand. For division use int(left / right), because // rounds down for negatives."
+  ],
+  "complexity": {
+    "time": "O(n)",
+    "space": "O(n)"
+  }
+}

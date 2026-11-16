@@ -1,0 +1,30 @@
+{
+  "id": "floor-by-floor",
+  "title": "Floor by Floor",
+  "difficulty": "medium",
+  "unit": "trees",
+  "tags": [
+    "binary tree",
+    "breadth-first search",
+    "queue"
+  ],
+  "entrypoint": "floors",
+  "params": [
+    {
+      "name": "root",
+      "type": "TreeNode"
+    }
+  ],
+  "returns": "list[list[int]]",
+  "comparator": "exact",
+  "time_limit_ms": 2000,
+  "hints": [
+    "Visiting a tree level by level is breadth-first search, and breadth-first search uses a queue.",
+    "The difficulty is knowing where one floor ends. Look at how many nodes are in the queue before you start a floor.",
+    "Take len(queue) at the start of each round and process exactly that many nodes, adding their children for the next round."
+  ],
+  "complexity": {
+    "time": "O(n)",
+    "space": "O(w), w = widest floor"
+  }
+}

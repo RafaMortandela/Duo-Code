@@ -4,20 +4,69 @@
     "title": "Arrays & Hashing",
     "description": "Count, look up and group in constant time with dictionaries and sets.",
     "icon": "hash",
-    "problems": ["gift-card-pair"]
+    "problems": ["wardrobe-favorite", "gift-card-pair", "scrambled-labels"]
+  },
+  {
+    "id": "two-pointers",
+    "title": "Two Pointers",
+    "description": "Two indices moving through the same sequence replace a nested loop.",
+    "icon": "pointers",
+    "problems": ["mirror-caption", "sold-out-to-the-back", "duet-budget"]
+  },
+  {
+    "id": "sliding-window",
+    "title": "Sliding Window",
+    "description": "Keep a running summary of a stretch of the input and update it as the stretch moves.",
+    "icon": "window",
+    "problems": ["best-k-day-stretch", "fresh-playlist-run", "flavor-basket"]
   },
   {
     "id": "stack",
     "title": "Stack",
-    "description": "Last in, first out: matching pairs, undo histories and monotonic stacks.",
+    "description": "Last in, first out: matching pairs, pending work and monotonic stacks.",
     "icon": "stack",
-    "problems": ["balanced-brackets"]
+    "problems": ["balanced-brackets", "price-drop-alert", "receipt-calculator"]
+  },
+  {
+    "id": "binary-search",
+    "title": "Binary Search",
+    "description": "Halve the search space each step, over sorted data or over the answer itself.",
+    "icon": "search",
+    "problems": ["first-row-at-least", "rotated-shelf", "print-speed"]
   },
   {
     "id": "linked-list",
     "title": "Linked List",
     "description": "Rewire pointers without losing the rest of the chain.",
     "icon": "link",
-    "problems": ["rewind-the-playlist"]
+    "problems": ["rewind-the-playlist", "middle-of-the-queue", "merge-two-setlists"]
+  },
+  {
+    "id": "trees",
+    "title": "Trees",
+    "description": "Recursion and level-by-level traversal over branching structures.",
+    "icon": "tree",
+    "problems": ["tallest-branch", "floor-by-floor", "catalog-check"]
+  },
+  {
+    "id": "heap",
+    "title": "Heap",
+    "description": "Always know the smallest or largest item without sorting everything.",
+    "icon": "heap",
+    "problems": ["top-scores", "merge-the-timelines", "running-median"]
+  },
+  {
+    "id": "graphs",
+    "title": "Graphs",
+    "description": "Flood fills, dependency orders and shortest paths.",
+    "icon": "graph",
+    "problems": ["count-the-blobs", "launch-order", "one-wall-escape"]
+  },
+  {
+    "id": "dynamic-programming",
+    "title": "Dynamic Programming",
+    "description": "Solve each smaller version once and build the answer from those.",
+    "icon": "table",
+    "problems": ["stair-hops", "exact-change", "typo-fix-cost"]
   }
 ]

@@ -1,0 +1,30 @@
+{
+  "id": "fresh-playlist-run",
+  "title": "Fresh Playlist Run",
+  "difficulty": "medium",
+  "unit": "sliding-window",
+  "tags": [
+    "sliding window",
+    "hash map",
+    "variable size"
+  ],
+  "entrypoint": "longest_fresh_run",
+  "params": [
+    {
+      "name": "songs",
+      "type": "list[int]"
+    }
+  ],
+  "returns": "int",
+  "comparator": "exact",
+  "time_limit_ms": 2000,
+  "hints": [
+    "Grow a window to the right one play at a time. When does it stop being fresh?",
+    "It breaks exactly when the new song is already inside the window. Then the left edge has to jump past the earlier play.",
+    "Remember the last index of each song in a dictionary. Only move the left edge if that index is inside the current window."
+  ],
+  "complexity": {
+    "time": "O(n)",
+    "space": "O(k), k = distinct songs"
+  }
+}

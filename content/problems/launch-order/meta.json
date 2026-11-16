@@ -1,0 +1,34 @@
+{
+  "id": "launch-order",
+  "title": "Launch Order",
+  "difficulty": "medium",
+  "unit": "graphs",
+  "tags": [
+    "topological sort",
+    "directed graph",
+    "heap"
+  ],
+  "entrypoint": "launch_order",
+  "params": [
+    {
+      "name": "n",
+      "type": "int"
+    },
+    {
+      "name": "rules",
+      "type": "list[list[int]]"
+    }
+  ],
+  "returns": "list[int]",
+  "comparator": "exact",
+  "time_limit_ms": 2000,
+  "hints": [
+    "A task can start once every task that must come before it is done. Count, for each task, how many are still pending.",
+    "Tasks with a count of zero are ready. Doing one lowers the count of the tasks that were waiting for it.",
+    "Keep the ready tasks in a min-heap to always take the smallest. If fewer than n tasks come out, there was a cycle."
+  ],
+  "complexity": {
+    "time": "O((n + r) log n)",
+    "space": "O(n + r)"
+  }
+}

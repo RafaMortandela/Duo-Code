@@ -1,0 +1,32 @@
+{
+  "id": "print-speed",
+  "title": "Print Speed",
+  "difficulty": "medium",
+  "unit": "binary-search",
+  "tags": [
+    "binary search on the answer"
+  ],
+  "entrypoint": "min_print_speed",
+  "params": [
+    {
+      "name": "jobs",
+      "type": "list[int]"
+    },
+    {
+      "name": "hours",
+      "type": "int"
+    }
+  ],
+  "returns": "int",
+  "comparator": "exact",
+  "time_limit_ms": 2000,
+  "hints": [
+    "Trying every speed from 1 upward is too slow. But notice: if some speed is fast enough, every higher speed is too.",
+    "That makes the answer the boundary between speeds that fail and speeds that work. You can binary search for a boundary.",
+    "Search speeds in [1, max(jobs)]. For a candidate speed, the hours needed are the sum of ceil(pages / speed) over all jobs."
+  ],
+  "complexity": {
+    "time": "O(n log M), M = largest job",
+    "space": "O(1)"
+  }
+}

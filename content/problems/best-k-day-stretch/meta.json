@@ -1,0 +1,33 @@
+{
+  "id": "best-k-day-stretch",
+  "title": "Best K-Day Stretch",
+  "difficulty": "easy",
+  "unit": "sliding-window",
+  "tags": [
+    "sliding window",
+    "fixed size"
+  ],
+  "entrypoint": "best_stretch",
+  "params": [
+    {
+      "name": "steps",
+      "type": "list[int]"
+    },
+    {
+      "name": "k",
+      "type": "int"
+    }
+  ],
+  "returns": "int",
+  "comparator": "exact",
+  "time_limit_ms": 2000,
+  "hints": [
+    "Two neighbouring windows of k days share k - 1 days. You do not need to add them up again.",
+    "Moving the window one day forward changes the total by: plus the day that enters, minus the day that leaves.",
+    "Compute the first window with sum(steps[:k]), then update it for each later day and track the maximum."
+  ],
+  "complexity": {
+    "time": "O(n)",
+    "space": "O(1)"
+  }
+}

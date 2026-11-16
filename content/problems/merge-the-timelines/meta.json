@@ -1,0 +1,29 @@
+{
+  "id": "merge-the-timelines",
+  "title": "Merge the Timelines",
+  "difficulty": "medium",
+  "unit": "heap",
+  "tags": [
+    "heap",
+    "k-way merge"
+  ],
+  "entrypoint": "merge_timelines",
+  "params": [
+    {
+      "name": "timelines",
+      "type": "list[list[int]]"
+    }
+  ],
+  "returns": "list[int]",
+  "comparator": "exact",
+  "time_limit_ms": 2000,
+  "hints": [
+    "At any moment, the next timestamp of the feed is the smallest among the first unused timestamp of each account.",
+    "Finding the smallest among k candidates over and over is what a min-heap is for.",
+    "Keep one entry per account in the heap: (timestamp, account index, position). After popping, push that account's next timestamp."
+  ],
+  "complexity": {
+    "time": "O(n log k)",
+    "space": "O(k)"
+  }
+}

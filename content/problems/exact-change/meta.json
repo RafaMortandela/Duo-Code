@@ -1,0 +1,33 @@
+{
+  "id": "exact-change",
+  "title": "Exact Change",
+  "difficulty": "medium",
+  "unit": "dynamic-programming",
+  "tags": [
+    "dynamic programming",
+    "unbounded knapsack"
+  ],
+  "entrypoint": "fewest_coins",
+  "params": [
+    {
+      "name": "coins",
+      "type": "list[int]"
+    },
+    {
+      "name": "amount",
+      "type": "int"
+    }
+  ],
+  "returns": "int",
+  "comparator": "exact",
+  "time_limit_ms": 2000,
+  "hints": [
+    "Taking the biggest coin first can fail. You need to consider every coin as a possible last coin.",
+    "If the last coin is c, the rest of the change is the best way to make amount - c. That is the same problem, smaller.",
+    "Fill a table fewest[0..amount] from small to large: fewest[x] = 1 + min(fewest[x - c]) over the coins c that fit."
+  ],
+  "complexity": {
+    "time": "O(amount * len(coins))",
+    "space": "O(amount)"
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "id": "scrambled-labels",
+  "title": "Scrambled Labels",
+  "difficulty": "medium",
+  "unit": "arrays-hashing",
+  "tags": [
+    "hash map",
+    "canonical key",
+    "sorting"
+  ],
+  "entrypoint": "group_labels",
+  "params": [
+    {
+      "name": "labels",
+      "type": "list[str]"
+    }
+  ],
+  "returns": "list[list[str]]",
+  "comparator": "exact",
+  "time_limit_ms": 2000,
+  "hints": [
+    "You need something that is identical for two labels exactly when they are rearrangements of each other.",
+    "The letters of a label in sorted order are such a signature. Use it as a dictionary key.",
+    "Append each label to groups[signature]. At the end sort each group, then sort the list of groups."
+  ],
+  "complexity": {
+    "time": "O(n * L log L)",
+    "space": "O(n * L)"
+  }
+}

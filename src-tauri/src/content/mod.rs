@@ -610,6 +610,20 @@ mod tests {
         let loaded = load_all(&dir);
         assert!(loaded.warnings.is_empty(), "{:#?}", loaded.warnings);
         assert!(!loaded.problems.is_empty());
+        // 006 CA-2: 30 questões em 10 unidades de 3, sem repetição nem órfã
+        assert_eq!(loaded.problems.len(), 30);
+        assert_eq!(loaded.units.len(), 10);
+        assert!(loaded.units.iter().all(|u| u.problems.len() == 3));
+        let by = |d: Difficulty| loaded.problems.iter().filter(|p| p.difficulty == d).count();
+        assert_eq!((by(Difficulty::Easy), by(Difficulty::Medium), by(Difficulty::Hard)), (11, 16, 3));
+        // 006 RF-2, RF-5: testes e dicas suficientes em cada questão
+        for p in &loaded.problems {
+            let visible = p.tests.iter().filter(|t| !t.hidden).count();
+            assert!(visible >= 3, "{}: {visible} visible tests", p.slug);
+            assert!(p.tests.len() - visible >= 5, "{}: too few hidden tests", p.slug);
+            assert!((1..=3).contains(&p.hints.len()), "{}: hints", p.slug);
+            assert!(p.complexity.is_some(), "{}: complexity", p.slug);
+        }
         // toda questão está em exatamente uma unidade, e na unidade que ela declara
         let placed: usize = loaded.units.iter().map(|u| u.problems.len()).sum();
         assert_eq!(placed, loaded.problems.len());

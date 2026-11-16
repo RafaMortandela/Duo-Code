@@ -1,0 +1,30 @@
+{
+  "id": "tallest-branch",
+  "title": "Tallest Branch",
+  "difficulty": "easy",
+  "unit": "trees",
+  "tags": [
+    "binary tree",
+    "depth-first search",
+    "recursion"
+  ],
+  "entrypoint": "tree_height",
+  "params": [
+    {
+      "name": "root",
+      "type": "TreeNode"
+    }
+  ],
+  "returns": "int",
+  "comparator": "exact",
+  "time_limit_ms": 2000,
+  "hints": [
+    "If you already knew the height of the left subtree and of the right subtree, what would the height of the whole tree be?",
+    "It is 1 + max(left height, right height). That is a recursive definition.",
+    "The recursion stops at a missing child: an empty tree has height 0."
+  ],
+  "complexity": {
+    "time": "O(n)",
+    "space": "O(h), h = height"
+  }
+}

@@ -1,0 +1,33 @@
+{
+  "id": "rotated-shelf",
+  "title": "Rotated Shelf",
+  "difficulty": "medium",
+  "unit": "binary-search",
+  "tags": [
+    "binary search",
+    "rotated array"
+  ],
+  "entrypoint": "find_on_shelf",
+  "params": [
+    {
+      "name": "shelf",
+      "type": "list[int]"
+    },
+    {
+      "name": "code",
+      "type": "int"
+    }
+  ],
+  "returns": "int",
+  "comparator": "exact",
+  "time_limit_ms": 2000,
+  "hints": [
+    "Split the range at the middle. Even though the whole shelf is rotated, one of the two halves is always fully sorted.",
+    "You can tell which half is sorted by comparing shelf[low] with shelf[mid].",
+    "In the sorted half, check whether code lies between its two ends. If so search there; otherwise search the other half."
+  ],
+  "complexity": {
+    "time": "O(log n)",
+    "space": "O(1)"
+  }
+}
