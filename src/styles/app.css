@@ -331,3 +331,20 @@ h2 {
   flex: 1;
   font-weight: 700;
 }
+
+/* Tela de erro (ErrorBoundary) */
+.crash {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-4);
+  max-width: 880px;
+  margin: 0 auto;
+  padding: var(--space-7) var(--space-5);
+}
+
+.crash pre {
+  align-self: stretch;
+  max-height: 50vh;
+  white-space: pre-wrap;
+}

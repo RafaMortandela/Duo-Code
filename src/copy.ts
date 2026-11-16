@@ -235,6 +235,11 @@ export const copy = {
       "O app sobe direto na bandeja ao ligar o computador, para o lembrete funcionar sem você abrir nada.",
     trayNote: "Fechar a janela mantém o Duo Code na bandeja. Para encerrar, use Sair no ícone da bandeja.",
   },
+  crash: {
+    title: "Ops, algo quebrou",
+    note: "Seu progresso está salvo. O erro abaixo ajuda a descobrir o que aconteceu.",
+    reload: "Voltar para o início",
+  },
   errors: {
     generic: "Algo deu errado. Tente de novo.",
     unavailable: "Este recurso só funciona dentro do aplicativo.",

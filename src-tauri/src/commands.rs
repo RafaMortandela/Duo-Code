@@ -115,3 +115,10 @@ pub fn set_autostart(app: AppHandle, enabled: bool) -> AppResult<()> {
         launcher.disable().map_err(autostart_error)
     }
 }
+
+/// Erros do frontend vão para o stderr do app, para aparecerem em
+/// `journalctl` ou no terminal de quem rodou o binário.
+#[tauri::command]
+pub fn log_frontend_error(message: String) {
+    eprintln!("[frontend] {message}");
+}

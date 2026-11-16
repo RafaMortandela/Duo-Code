@@ -10,9 +10,15 @@ import "./styles/progress.css";
 import "./styles/trail.css";
 import "./styles/motion.css";
 import App from "./App";
+import { installGlobalErrorLogging } from "./api/diagnostics";
+import { ErrorBoundary } from "./components/ErrorBoundary";
+
+installGlobalErrorLogging();
 
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   <React.StrictMode>
-    <App />
+    <ErrorBoundary>
+      <App />
+    </ErrorBoundary>
   </React.StrictMode>,
 );

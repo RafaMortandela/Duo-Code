@@ -44,6 +44,28 @@ pub fn run() {
                 desktop::on_close_requested(window, api);
             }
         })
+        // Só em builds de depuração: abre direto em uma rota, para reproduzir
+        // um problema sem precisar clicar. Ex.: DUO_CODE_START_ROUTE=/problem/stair-hops
+        .on_page_load(|webview, payload| {
+            if cfg!(debug_assertions) && payload.event() == tauri::webview::PageLoadEvent::Finished {
+                if let Ok(route) = std::env::var("DUO_CODE_START_ROUTE") {
+                    let target = serde_json::to_string(&format!("#{route}")).unwrap_or_default();
+                    let _ = webview.eval(format!(
+                        "if (window.location.hash !== {target}) window.location.hash = {target};"
+                    ));
+                }
+                // DUO_CODE_PROBE=<seletor CSS>: depois de alguns segundos, registra
+                // no log se o elemento existe (ex.: ".monaco-editor").
+                if let Ok(selector) = std::env::var("DUO_CODE_PROBE") {
+                    let selector = serde_json::to_string(&selector).unwrap_or_default();
+                    let _ = webview.eval(format!(
+                        "setTimeout(() => window.__TAURI_INTERNALS__.invoke('log_frontend_error', {{ \
+                         message: 'probe ' + {selector} + ' at ' + location.hash + ': ' + \
+                         (document.querySelector({selector}) ? 'FOUND' : 'MISSING') }}), 4000);"
+                    ));
+                }
+            }
+        })
         .setup(|app| {
             let data_dir = app.path().app_data_dir()?;
             let conn = db::open(&data_dir.join(DB_FILE))?;
@@ -84,6 +106,7 @@ pub fn run() {
             commands::test_notification,
             commands::get_autostart,
             commands::set_autostart,
+            commands::log_frontend_error,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

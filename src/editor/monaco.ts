@@ -6,6 +6,7 @@ import "monaco-editor/features/register.all";
 import "monaco-editor/languages/definitions/python/register";
 import EditorWorker from "monaco-editor/editor/editor.worker?worker";
 import type { ResolvedTheme } from "../theme/ThemeProvider";
+import { toFullHex } from "./colors";
 
 self.MonacoEnvironment = {
   getWorker: () => new EditorWorker(),
@@ -17,13 +18,15 @@ export const EDITOR_THEMES: Record<ResolvedTheme, string> = {
   dark: "duo-rose-noir",
 };
 
+/** Valor de um token CSS do tema atual, sempre como `#rrggbb`. */
 function token(name: string): string {
-  return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  const raw = getComputedStyle(document.documentElement).getPropertyValue(name);
+  return toFullHex(raw);
 }
 
 /** Monaco quer a cor das regras de sintaxe sem o `#`. */
 function bare(name: string): string {
-  return token(name).replace("#", "");
+  return token(name).slice(1);
 }
 
 /** (Re)define o tema do editor a partir dos tokens CSS do tema atual. */
