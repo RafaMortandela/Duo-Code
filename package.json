@@ -10,7 +10,8 @@
     "tauri": "tauri",
     "test": "vitest run",
     "check:literals": "node scripts/check-literals.mjs",
-    "check": "tsc --noEmit && npm run check:literals && npm test"
+    "check": "tsc --noEmit && npm run check:literals && npm test",
+    "setup": "bash scripts/check-setup.sh"
   },
   "dependencies": {
     "@fontsource-variable/jetbrains-mono": "^5.3.0",
