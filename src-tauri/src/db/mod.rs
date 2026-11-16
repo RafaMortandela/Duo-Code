@@ -1,5 +1,6 @@
 pub mod problems;
 pub mod progress;
+pub mod reviews;
 pub mod settings;
 
 use crate::error::AppResult;
@@ -57,6 +58,19 @@ const MIGRATIONS: &[&str] = &[
         unit_id    TEXT PRIMARY KEY,
         local_date TEXT NOT NULL
     ) STRICT;",
+    // 5 — revisão espaçada (spec 005). As questões já resolvidas entram na
+    //     fila com vencimento no dia seguinte à primeira aceitação.
+    "CREATE TABLE reviews (
+        problem_slug    TEXT PRIMARY KEY,
+        stage           INTEGER NOT NULL CHECK (stage BETWEEN 0 AND 4),
+        due_date        TEXT NOT NULL,
+        last_reviewed   TEXT,
+        awaiting_rating INTEGER NOT NULL DEFAULT 0,
+        stage_before    INTEGER
+    ) STRICT;
+    INSERT INTO reviews (problem_slug, stage, due_date)
+        SELECT problem_slug, 0, date(min(local_date), '+1 day')
+        FROM submissions WHERE verdict = 'accepted' GROUP BY problem_slug;",
 ];
 
 /// Abre (criando se preciso) o banco em `path` e aplica as migrações pendentes.
@@ -77,8 +91,13 @@ pub fn schema_version(conn: &Connection) -> AppResult<usize> {
 
 /// Aplica as migrações que faltam. Idempotente: rodar de novo não faz nada.
 pub fn migrate(conn: &mut Connection) -> AppResult<()> {
+    migrate_up_to(conn, MIGRATIONS.len())
+}
+
+/// Aplica as migrações pendentes até a de número `limit` (inclusive).
+fn migrate_up_to(conn: &mut Connection, limit: usize) -> AppResult<()> {
     let current = schema_version(conn)?;
-    for (i, sql) in MIGRATIONS.iter().enumerate().skip(current) {
+    for (i, sql) in MIGRATIONS.iter().enumerate().take(limit).skip(current) {
         let tx = conn.transaction()?;
         tx.execute_batch(sql)?;
         tx.pragma_update(None, "user_version", (i + 1) as i64)?;
@@ -144,5 +163,31 @@ mod tests {
             settings::get(&conn, "theme").unwrap(),
             Some("dark".to_string())
         );
+    }
+
+    // Migração 5: quem já tinha questões resolvidas as encontra na fila de revisão.
+    #[test]
+    fn migration_5_backfills_reviews_for_already_solved_problems() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut conn = Connection::open(dir.path().join("old.db")).unwrap();
+        migrate_up_to(&mut conn, 4).unwrap();
+        assert_eq!(schema_version(&conn).unwrap(), 4);
+        conn.execute_batch(
+            "INSERT INTO submissions (problem_slug, code, verdict, passed, total, duration_ms, local_date) VALUES
+                ('solved', '', 'wrong_answer', 0, 1, 1, '2026-11-09'),
+                ('solved', '', 'accepted',     1, 1, 1, '2026-11-10'),
+                ('solved', '', 'accepted',     1, 1, 1, '2026-11-14'),
+                ('tried',  '', 'wrong_answer', 0, 1, 1, '2026-11-10');",
+        )
+        .unwrap();
+
+        migrate(&mut conn).unwrap();
+
+        let rows = reviews::all(&conn).unwrap();
+        assert_eq!(rows.len(), 1);
+        assert_eq!(rows[0].slug, "solved");
+        assert_eq!(rows[0].stage, 0);
+        assert_eq!(rows[0].due.to_string(), "2026-11-11");
+        assert!(!rows[0].awaiting_rating);
     }
 }

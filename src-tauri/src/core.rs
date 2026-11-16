@@ -3,6 +3,7 @@
 use crate::content::{Complexity, Difficulty, Param, Problem, TestCase, Unit};
 use crate::db;
 use crate::domain::achievements::{self, AchievementState};
+use crate::domain::srs::{self, Rating};
 use crate::domain::streak::{streak, Streak};
 use crate::domain::trail::{self, UnitDef, UnitProgress, UnitState};
 use crate::domain::xp::{level_info, xp_for, LevelInfo, XpEvent};
@@ -23,6 +24,34 @@ pub enum RewardReason {
     AlreadySolved,
     /// A usuária desistiu desta questão antes de resolvê-la (CA-13).
     GaveUp,
+    /// Revisão de uma questão vencida, feita no modo revisão (spec 005).
+    Review,
+}
+
+/// Agendamento de revisão de uma questão, como a interface o mostra.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct ReviewSchedule {
+    pub stage: u8,
+    pub due_date: String,
+    /// Falta a usuária avaliar a revisão (difícil / ok / fácil).
+    pub awaiting_rating: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct ReviewItem {
+    pub problem: ProblemSummary,
+    pub due_date: String,
+    pub days_overdue: i64,
+    pub stage: u8,
+}
+
+/// Fila de revisão do dia (005 RF-2).
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct ReviewQueue {
+    /// Vencidas, da mais atrasada para a menos atrasada.
+    pub due: Vec<ReviewItem>,
+    /// Próximo vencimento futuro, para a mensagem de fila vazia.
+    pub next_due: Option<String>,
 }
 
 /// Resumo de recompensas de uma submissão aceita (RF-3).
@@ -38,6 +67,8 @@ pub struct Rewards {
     pub achievements: Vec<String>,
     /// Títulos das unidades da trilha que abriram com esta submissão (004 RF-6).
     pub units_unlocked: Vec<String>,
+    /// Novo agendamento, quando a submissão foi uma revisão (spec 005).
+    pub review: Option<ReviewSchedule>,
 }
 
 /// O que falta para uma unidade bloqueada abrir (004 RF-4).
@@ -103,6 +134,8 @@ pub struct Progress {
     pub activity: Vec<ActivityDay>,
     pub achievements: Vec<AchievementStatus>,
     pub next_problem: Option<ProblemSummary>,
+    /// Revisões vencidas hoje (005 RF-3).
+    pub reviews_due: u32,
 }
 
 /// Quantos dias de atividade o calendário do perfil cobre (53 semanas).
@@ -365,6 +398,16 @@ impl Core {
     /// "Enviar": todos os testes; grava a submissão e, se aceita, as
     /// recompensas — tudo em uma única transação (RF-2, CA-11).
     pub fn submit_code(&self, slug: &str, code: &str, today: &str) -> AppResult<SubmitResult> {
+        self.submit(slug, code, today, false)
+    }
+
+    /// "Enviar" no modo revisão: se a questão está vencida e a submissão é
+    /// aceita, conta como revisão (5 XP, dia ativo, novo agendamento).
+    pub fn submit_review(&self, slug: &str, code: &str, today: &str) -> AppResult<SubmitResult> {
+        self.submit(slug, code, today, true)
+    }
+
+    fn submit(&self, slug: &str, code: &str, today: &str, review_mode: bool) -> AppResult<SubmitResult> {
         let p = self.problem(slug)?;
         let date = db::progress::parse_date(today)?;
         self.ensure_unlocked(&*self.conn()?, slug)?;
@@ -391,19 +434,45 @@ impl Core {
 
         let rewards = if is_accepted(&outcome) {
             let (streak_before, level_before, rewarded_before) = self.snapshot(&tx, date)?;
-            let reason = if rewarded_before.contains(slug) {
+            let scheduled = db::reviews::get(&tx, slug)?;
+            let due_review = review_mode
+                && scheduled.as_ref().is_some_and(|r| srs::is_due(r.due, date) && !r.awaiting_rating);
+            let reason = if due_review {
+                RewardReason::Review
+            } else if rewarded_before.contains(slug) {
                 RewardReason::AlreadySolved
             } else if db::problems::has_given_up(&tx, slug)? {
                 RewardReason::GaveUp
             } else {
                 RewardReason::FirstSolve
             };
-            let xp_gained = if reason == RewardReason::FirstSolve {
-                let amount = xp_for(XpEvent::FirstSolve(p.difficulty));
-                db::progress::insert_xp_event(&tx, today, db::progress::KIND_SOLVE, slug, amount)?;
-                amount
-            } else {
-                0
+            let xp_gained = match reason {
+                RewardReason::FirstSolve => {
+                    let amount = xp_for(XpEvent::FirstSolve(p.difficulty));
+                    db::progress::insert_xp_event(&tx, today, db::progress::KIND_SOLVE, slug, amount)?;
+                    amount
+                }
+                RewardReason::Review => {
+                    let amount = xp_for(XpEvent::Review);
+                    db::progress::insert_xp_event(&tx, today, db::progress::KIND_REVIEW, slug, amount)?;
+                    amount
+                }
+                RewardReason::AlreadySolved | RewardReason::GaveUp => 0,
+            };
+
+            // Agendamento de revisão: a primeira aceitação põe a questão na fila;
+            // uma revisão aceita reagenda como "ok" até a usuária avaliar (CA-14).
+            let review = match (&scheduled, due_review) {
+                (Some(row), true) => {
+                    let next = srs::next_review(row.stage, Rating::Ok, date);
+                    db::reviews::save(&tx, slug, next, Some(today), true, Some(row.stage))?;
+                    Some(Self::schedule_view(next, true))
+                }
+                (None, _) => {
+                    db::reviews::save(&tx, slug, srs::initial(date), None, false, None)?;
+                    None
+                }
+                (Some(_), false) => None,
             };
 
             let (streak, level, rewarded) = self.snapshot(&tx, date)?;
@@ -448,6 +517,7 @@ impl Core {
                 streak,
                 achievements: unlocked,
                 units_unlocked,
+                review,
             })
         } else {
             None
@@ -455,6 +525,88 @@ impl Core {
 
         tx.commit()?;
         Ok(SubmitResult { outcome, rewards })
+    }
+
+    fn schedule_view(schedule: srs::Schedule, awaiting_rating: bool) -> ReviewSchedule {
+        ReviewSchedule {
+            stage: schedule.stage,
+            due_date: schedule.due.format(db::progress::DATE_FORMAT).to_string(),
+            awaiting_rating,
+        }
+    }
+
+    /// Avaliação de uma revisão aceita: substitui o agendamento provisório.
+    /// O intervalo conta a partir do dia em que a revisão foi feita.
+    pub fn rate_review(&self, slug: &str, rating: Rating, today: &str) -> AppResult<ReviewSchedule> {
+        self.problem(slug)?;
+        let fallback = db::progress::parse_date(today)?;
+        let conn = self.conn()?;
+        let row = db::reviews::get(&conn, slug)?
+            .filter(|r| r.awaiting_rating)
+            .ok_or_else(|| AppError::new("not_awaiting_rating", "this review has no pending rating"))?;
+        let reviewed_on = match &row.last_reviewed {
+            Some(d) => db::progress::parse_date(d)?,
+            None => fallback,
+        };
+        let next = srs::next_review(row.stage_before.unwrap_or(row.stage), rating, reviewed_on);
+        db::reviews::save(&conn, slug, next, row.last_reviewed.as_deref(), false, None)?;
+        Ok(Self::schedule_view(next, false))
+    }
+
+    /// "Não consegui": volta ao começo, sem XP e sem contar para o streak (CA-7).
+    pub fn fail_review(&self, slug: &str, today: &str) -> AppResult<ReviewSchedule> {
+        self.problem(slug)?;
+        let date = db::progress::parse_date(today)?;
+        let conn = self.conn()?;
+        db::reviews::get(&conn, slug)?
+            .filter(|r| srs::is_due(r.due, date) && !r.awaiting_rating)
+            .ok_or_else(|| AppError::new("not_due", "this problem is not due for review"))?;
+        let next = srs::failed(date);
+        db::reviews::save(&conn, slug, next, Some(today), false, None)?;
+        Ok(Self::schedule_view(next, false))
+    }
+
+    fn review_rows(&self, conn: &Connection) -> AppResult<Vec<(db::reviews::ReviewRow, NaiveDate)>> {
+        Ok(db::reviews::all(conn)?
+            .into_iter()
+            .filter(|r| self.problems.iter().any(|p| p.slug == r.slug))
+            .map(|r| {
+                let due = r.due;
+                (r, due)
+            })
+            .collect())
+    }
+
+    pub fn review_queue(&self, today: &str) -> AppResult<ReviewQueue> {
+        let date = db::progress::parse_date(today)?;
+        let conn = self.conn()?;
+        let rows = self.review_rows(&conn)?;
+        let attempts = db::problems::attempt_map(&conn)?;
+        let due = srs::due_queue(&rows, date)
+            .into_iter()
+            .filter_map(|(row, due)| {
+                let p = self.problems.iter().find(|p| p.slug == row.slug)?;
+                Some(ReviewItem {
+                    problem: Self::summary(p, Self::status_of(&attempts, &p.slug)),
+                    due_date: due.format(db::progress::DATE_FORMAT).to_string(),
+                    days_overdue: (date - due).num_days(),
+                    stage: row.stage,
+                })
+            })
+            .collect();
+        let next_due = rows
+            .iter()
+            .map(|(_, d)| *d)
+            .filter(|d| !srs::is_due(*d, date))
+            .min()
+            .map(|d| d.format(db::progress::DATE_FORMAT).to_string());
+        Ok(ReviewQueue { due, next_due })
+    }
+
+    /// O dia de hoje já é ativo? Usado pelo lembrete.
+    pub fn is_day_active(&self, today: &str) -> AppResult<bool> {
+        let date = db::progress::parse_date(today)?;
+        Ok(db::progress::active_dates(&*self.conn()?)?.contains(&date))
     }
 
     pub fn progress(&self, today: &str) -> AppResult<Progress> {
@@ -506,6 +658,7 @@ impl Core {
             activity,
             achievements,
             next_problem,
+            reviews_due: srs::due_queue(&self.review_rows(&conn)?, date).len() as u32,
         })
     }
 
@@ -1121,5 +1274,215 @@ mod tests {
         );
         assert!(core.get_problem("loose").is_ok());
         assert_eq!(core.trail(TODAY).unwrap().len(), 1);
+    }
+
+    // ---------- spec 005 ----------
+
+    const MON: &str = "2026-11-16";
+    const TUE: &str = "2026-11-17";
+    const WED: &str = "2026-11-18";
+
+    fn review(core: &Core, slug: &str, day: &str) -> Rewards {
+        let solution = add_problem().solution;
+        core.submit_review(slug, &solution, day).unwrap().rewards.expect("accepted")
+    }
+
+    fn row(core: &Core, slug: &str) -> db::reviews::ReviewRow {
+        db::reviews::get(&core.conn().unwrap(), slug).unwrap().expect("scheduled")
+    }
+
+    fn queue(core: &Core, day: &str) -> Vec<String> {
+        core.review_queue(day).unwrap().due.into_iter().map(|i| i.problem.slug).collect()
+    }
+
+    // CA-1
+    #[test]
+    fn first_solve_schedules_the_first_review_for_the_next_day() {
+        let (_d, core) = game();
+        let rewards = solve(&core, "e1", MON);
+        assert!(rewards.review.is_none());
+        assert_eq!((row(&core, "e1").stage, row(&core, "e1").due.to_string()), (0, TUE.to_string()));
+
+        assert!(queue(&core, MON).is_empty());
+        assert_eq!(core.review_queue(MON).unwrap().next_due.as_deref(), Some(TUE));
+        assert_eq!(queue(&core, TUE), vec!["e1"]);
+        assert_eq!(core.progress(TUE).unwrap().reviews_due, 1);
+        assert_eq!(core.progress(MON).unwrap().reviews_due, 0);
+    }
+
+    // CA-9
+    #[test]
+    fn an_accepted_review_earns_5_xp_and_makes_the_day_active() {
+        let (_d, core) = game();
+        solve(&core, "e1", MON);
+        let r = review(&core, "e1", WED); // dois dias depois: o streak tinha caído
+        assert_eq!(r.reason, RewardReason::Review);
+        assert_eq!(r.xp_gained, 5);
+        assert_eq!(r.level.xp_total, 15);
+        assert_eq!((r.streak_before, r.streak.current), (0, 1));
+        assert_eq!(r.streak.state, crate::domain::streak::DayState::Secured);
+        assert!(core.is_day_active(WED).unwrap());
+        assert!(queue(&core, WED).is_empty());
+    }
+
+    // CA-14
+    #[test]
+    fn an_unrated_review_is_provisionally_scheduled_as_ok() {
+        let (_d, core) = game();
+        solve(&core, "e1", MON);
+        let r = review(&core, "e1", TUE);
+        let schedule = r.review.unwrap();
+        assert_eq!((schedule.stage, schedule.due_date.as_str()), (1, "2026-11-20"));
+        assert!(schedule.awaiting_rating);
+
+        // "fechou o app": sem avaliar, o XP ficou e a questão saiu da fila de hoje
+        assert_eq!(core.progress(TUE).unwrap().level.xp_total, 15);
+        assert!(queue(&core, TUE).is_empty());
+        assert_eq!(queue(&core, "2026-11-20"), vec!["e1"]);
+    }
+
+    // CA-2, CA-3, CA-5
+    #[test]
+    fn rating_replaces_the_provisional_schedule() {
+        for (rating, stage, due) in [
+            (Rating::Hard, 0, "2026-11-18"),
+            (Rating::Ok, 1, "2026-11-20"),
+            (Rating::Easy, 2, "2026-11-24"),
+        ] {
+            let (_d, core) = game();
+            solve(&core, "e1", MON);
+            review(&core, "e1", TUE);
+            let s = core.rate_review("e1", rating, TUE).unwrap();
+            assert_eq!((s.stage, s.due_date.as_str(), s.awaiting_rating), (stage, due, false), "{rating:?}");
+            assert_eq!(row(&core, "e1").stage, stage);
+            // só se avalia uma vez
+            assert_eq!(core.rate_review("e1", Rating::Easy, TUE).unwrap_err().code, "not_awaiting_rating");
+        }
+    }
+
+    #[test]
+    fn rating_after_midnight_still_counts_from_the_review_day() {
+        let (_d, core) = game();
+        solve(&core, "e1", MON);
+        review(&core, "e1", TUE);
+        let s = core.rate_review("e1", Rating::Ok, WED).unwrap();
+        assert_eq!(s.due_date, "2026-11-20");
+    }
+
+    // CA-6
+    #[test]
+    fn an_overdue_review_is_rescheduled_from_today() {
+        let (_d, core) = game();
+        solve(&core, "e1", MON); // vence na terça
+        let late = "2026-11-22"; // feita 5 dias depois
+        assert_eq!(core.review_queue(late).unwrap().due[0].days_overdue, 5);
+        review(&core, "e1", late);
+        assert_eq!(core.rate_review("e1", Rating::Ok, late).unwrap().due_date, "2026-11-25");
+    }
+
+    // CA-7
+    #[test]
+    fn could_not_do_it_resets_without_xp_or_streak() {
+        let (_d, core) = game();
+        solve(&core, "e1", MON);
+        review(&core, "e1", TUE);
+        core.rate_review("e1", Rating::Easy, TUE).unwrap(); // estágio 2, vence 24/11
+        let xp = core.progress(TUE).unwrap().level.xp_total;
+
+        let day = "2026-11-24";
+        let s = core.fail_review("e1", day).unwrap();
+        assert_eq!((s.stage, s.due_date.as_str()), (0, "2026-11-25"));
+        assert_eq!(core.progress(day).unwrap().level.xp_total, xp);
+        assert!(!core.is_day_active(day).unwrap());
+        assert!(queue(&core, day).is_empty());
+        // não dá para "não conseguir" o que não está vencido
+        assert_eq!(core.fail_review("e1", day).unwrap_err().code, "not_due");
+        assert_eq!(core.fail_review("e2", day).unwrap_err().code, "not_due");
+    }
+
+    // CA-15
+    #[test]
+    fn resubmitting_a_due_problem_outside_review_mode_changes_nothing() {
+        let (_d, core) = game();
+        solve(&core, "e1", MON);
+        let r = solve(&core, "e1", TUE); // envio normal, não revisão
+        assert_eq!(r.reason, RewardReason::AlreadySolved);
+        assert_eq!(r.xp_gained, 0);
+        assert!(r.review.is_none());
+        assert_eq!(row(&core, "e1").stage, 0);
+        assert_eq!(queue(&core, TUE), vec!["e1"]);
+        assert!(!core.is_day_active(TUE).unwrap());
+    }
+
+    #[test]
+    fn review_mode_on_a_problem_that_is_not_due_is_just_a_resubmission() {
+        let (_d, core) = game();
+        solve(&core, "e1", MON);
+        let r = review(&core, "e1", MON); // só vence amanhã
+        assert_eq!(r.reason, RewardReason::AlreadySolved);
+        assert_eq!(r.xp_gained, 0);
+        assert_eq!(row(&core, "e1").due.to_string(), TUE);
+    }
+
+    #[test]
+    fn a_rejected_review_leaves_the_problem_in_the_queue() {
+        let (_d, core) = game();
+        solve(&core, "e1", MON);
+        let result = core.submit_review("e1", WRONG, TUE).unwrap();
+        assert!(result.rewards.is_none());
+        assert_eq!(queue(&core, TUE), vec!["e1"]);
+        assert_eq!(row(&core, "e1").stage, 0);
+    }
+
+    // CA-8
+    #[test]
+    fn queue_lists_the_most_overdue_first() {
+        let (_d, core) = game();
+        solve(&core, "m1", "2026-11-14"); // vence 15
+        solve(&core, "e1", "2026-11-12"); // vence 13
+        solve(&core, "e2", "2026-11-15"); // vence 16
+        solve(&core, "h1", MON); // vence 17: fora da fila de segunda
+        assert_eq!(queue(&core, MON), vec!["e1", "m1", "e2"]);
+        assert_eq!(core.review_queue(MON).unwrap().next_due.as_deref(), Some(TUE));
+    }
+
+    // Quem desistiu também revisa, e a revisão rende XP (spec 003).
+    #[test]
+    fn a_problem_solved_after_giving_up_enters_the_queue_and_can_earn_review_xp() {
+        let (_d, core) = game();
+        core.get_solution("e1", true, MON).unwrap();
+        assert_eq!(solve(&core, "e1", MON).xp_gained, 0);
+        assert_eq!(queue(&core, TUE), vec!["e1"]);
+        let r = review(&core, "e1", TUE);
+        assert_eq!((r.reason, r.xp_gained), (RewardReason::Review, 5));
+    }
+
+    #[test]
+    fn ten_reviews_unlock_the_achievement() {
+        let (_d, core) = game();
+        solve(&core, "e1", "2026-01-01");
+        let mut day = chrono::NaiveDate::from_ymd_opt(2026, 1, 2).unwrap();
+        let mut unlocked_at = None;
+        for n in 1..=10 {
+            let today = day.to_string();
+            let r = review(&core, "e1", &today);
+            assert_eq!(r.reason, RewardReason::Review, "review {n}");
+            if r.achievements.contains(&"review-10".to_string()) {
+                unlocked_at = Some(n);
+            }
+            let next = core.rate_review("e1", Rating::Hard, &today).unwrap();
+            day = chrono::NaiveDate::parse_from_str(&next.due_date, "%Y-%m-%d").unwrap();
+        }
+        assert_eq!(unlocked_at, Some(10));
+    }
+
+    #[test]
+    fn a_review_cannot_be_repeated_while_awaiting_rating() {
+        let (_d, core) = game();
+        solve(&core, "e1", MON);
+        review(&core, "e1", TUE);
+        let again = review(&core, "e1", TUE);
+        assert_eq!(again.reason, RewardReason::AlreadySolved);
+        assert_eq!(core.progress(TUE).unwrap().level.xp_total, 15);
     }
 }

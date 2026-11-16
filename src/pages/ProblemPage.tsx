@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Markdown from "react-markdown";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { toApiError } from "../api/client";
 import {
   getProblem,
@@ -12,19 +12,24 @@ import {
   type RunOutcome,
 } from "../api/problems";
 import type { Rewards } from "../api/progress";
+import { failReview, type ReviewSchedule } from "../api/reviews";
 import { CodeEditor } from "../components/CodeEditor";
 import { DifficultyBadge, StatusBadge } from "../components/Badges";
 import { Icon } from "../components/Icon";
 import { ResultsPanel, type RunMode } from "../components/ResultsPanel";
+import { ReviewRating } from "../components/ReviewRating";
 import { RewardsCard } from "../components/RewardsCard";
 import { useToast } from "../components/Toast";
 import { copy } from "../copy";
+import { displayDay } from "../lib/dates";
 import { useProgress } from "../progress/ProgressProvider";
 
 const DRAFT_DELAY_MS = 600;
 
 export function ProblemPage() {
   const { slug = "" } = useParams();
+  // Modo revisão (spec 005): começa do código inicial e não mexe no rascunho.
+  const reviewMode = useSearchParams()[0].get("review") === "1";
   const toast = useToast();
   const navigate = useNavigate();
   const { refresh: refreshProgress } = useProgress();
@@ -38,7 +43,11 @@ export function ProblemPage() {
   const [busy, setBusy] = useState(false);
   const [hintsShown, setHintsShown] = useState(0);
   const [solution, setSolution] = useState<string | null>(null);
-  const [confirming, setConfirming] = useState<"reset" | "give-up" | null>(null);
+  const [confirming, setConfirming] = useState<"reset" | "give-up" | "fail" | null>(null);
+  // Agendamento depois de avaliar ou de "Não consegui"; encerra a revisão.
+  const [reviewEnd, setReviewEnd] = useState<{ failed: boolean; schedule: ReviewSchedule } | null>(
+    null,
+  );
 
   const code = useRef("");
   // Rascunho ainda não gravado: { slug, code } e o timer que vai gravá-lo.
@@ -69,10 +78,11 @@ export function ProblemPage() {
     setHintsShown(0);
     setSolution(null);
     setConfirming(null);
+    setReviewEnd(null);
     getProblem(slug)
       .then((p) => {
         if (cancelled) return;
-        const start = p.draft ?? p.starter;
+        const start = reviewMode ? p.starter : (p.draft ?? p.starter);
         code.current = start;
         setInitialCode(start);
         setResetKey((k) => k + 1);
@@ -90,16 +100,17 @@ export function ProblemPage() {
       cancelled = true;
       flushDraft();
     };
-  }, [slug, reportError, flushDraft, navigate]);
+  }, [slug, reviewMode, reportError, flushDraft, navigate]);
 
   const onChange = useCallback(
     (next: string) => {
       code.current = next;
+      if (reviewMode) return; // a revisão não sobrescreve o rascunho
       pending.current = { slug, code: next };
       window.clearTimeout(timer.current);
       timer.current = window.setTimeout(flushDraft, DRAFT_DELAY_MS);
     },
-    [slug, flushDraft],
+    [slug, reviewMode, flushDraft],
   );
 
   const execute = useCallback(
@@ -113,7 +124,7 @@ export function ProblemPage() {
           setOutcome(await runCode(slug, code.current));
           setRewards(null);
         } else {
-          const result = await submitCode(slug, code.current);
+          const result = await submitCode(slug, code.current, reviewMode);
           setOutcome(result.outcome);
           setRewards(result.rewards);
           void refreshProgress();
@@ -130,7 +141,7 @@ export function ProblemPage() {
         setBusy(false);
       }
     },
-    [busy, problem, slug, flushDraft, reportError, refreshProgress],
+    [busy, problem, slug, reviewMode, flushDraft, reportError, refreshProgress],
   );
 
   const run = useCallback(() => void execute("run"), [execute]);
@@ -144,10 +155,30 @@ export function ProblemPage() {
     code.current = problem.starter;
     setInitialCode(problem.starter);
     setResetKey((k) => k + 1);
-    pending.current = { slug, code: problem.starter };
-    flushDraft();
+    if (!reviewMode) {
+      pending.current = { slug, code: problem.starter };
+      flushDraft();
+    }
     setConfirming(null);
   };
+
+  // "Não consegui": reagenda para amanhã e mostra a solução (005 CA-7).
+  const failThisReview = async () => {
+    try {
+      const schedule = await failReview(slug);
+      setReviewEnd({ failed: true, schedule });
+      setSolution(await getSolution(slug, false));
+      void refreshProgress();
+    } catch (e) {
+      reportError(e);
+    } finally {
+      setConfirming(null);
+    }
+  };
+
+  // Durante uma revisão em andamento a solução fica guardada.
+  const pendingReview = rewards?.review ?? null;
+  const reviewInProgress = reviewMode && reviewEnd === null && pendingReview === null;
 
   const showSolution = async (giveUp: boolean) => {
     try {
@@ -164,16 +195,23 @@ export function ProblemPage() {
   return (
     <div className="problem">
       <article className="problem-statement card">
-        <Link to="/trail" className="back-link">
+        <Link to={reviewMode ? "/review" : "/trail"} className="back-link">
           <Icon name="back" size={18} />
-          {copy.problem.back}
+          {reviewMode ? copy.review.back : copy.problem.back}
         </Link>
         <header className="problem-header">
           <h1>{problem.title}</h1>
           <div className="badges">
             <DifficultyBadge difficulty={problem.difficulty} />
             <StatusBadge status={problem.status} />
+            {reviewMode && (
+              <span className="badge" data-review="true">
+                <Icon name="review" size={14} />
+                {copy.review.mode}
+              </span>
+            )}
           </div>
+          {reviewMode && <p className="muted">{copy.review.modeNote}</p>}
         </header>
 
         <div className="markdown">
@@ -215,10 +253,33 @@ export function ProblemPage() {
 
         <section className="aside-section">
           <h2>{copy.problem.solution}</h2>
+          {reviewEnd?.failed && (
+            <p className="reward-note" role="status">
+              {copy.review.failed(displayDay(reviewEnd.schedule.due_date))}
+            </p>
+          )}
           {solution !== null ? (
             <pre className="solution">
               <code>{solution}</code>
             </pre>
+          ) : reviewInProgress ? (
+            confirming === "fail" ? (
+              <div className="confirm">
+                <p>{copy.review.failConfirm}</p>
+                <div className="confirm-actions">
+                  <button type="button" className="btn btn-ghost" onClick={failThisReview}>
+                    {copy.review.failYes}
+                  </button>
+                  <button type="button" className="btn btn-primary" onClick={() => setConfirming(null)}>
+                    {copy.review.failNo}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button type="button" className="btn btn-ghost" onClick={() => setConfirming("fail")}>
+                {copy.review.fail}
+              </button>
+            )
           ) : problem.solution_unlocked ? (
             <button type="button" className="btn btn-ghost" onClick={() => showSolution(false)}>
               <Icon name="eye" size={18} />
@@ -300,7 +361,20 @@ export function ProblemPage() {
             outcome={outcome}
             mode={mode}
             busy={busy}
-            afterVerdict={rewards && <RewardsCard rewards={rewards} />}
+            afterVerdict={
+              rewards && (
+                <>
+                  <RewardsCard rewards={rewards} />
+                  {pendingReview && (
+                    <ReviewRating
+                      slug={slug}
+                      schedule={reviewEnd?.schedule ?? pendingReview}
+                      onRated={(schedule) => setReviewEnd({ failed: false, schedule })}
+                    />
+                  )}
+                </>
+              )
+            }
           />
         </div>
       </div>

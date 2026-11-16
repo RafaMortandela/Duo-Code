@@ -15,6 +15,7 @@ import type {
   SubmitResult,
 } from "./problems";
 import type { Progress, Streak } from "./progress";
+import type { Rating, ReviewQueue, ReviewSchedule } from "./reviews";
 import type { TrailUnit } from "./trail";
 
 type Handler = (args: Record<string, unknown>) => unknown;
@@ -25,6 +26,8 @@ const REWARDED = "duo-code:dev:rewarded:";
 const GAVE_UP = "duo-code:dev:gave-up:";
 const EVENTS = "duo-code:dev:xp-events";
 const UNLOCKED = "duo-code:dev:achievements";
+const REVIEWS = "duo-code:dev:reviews";
+const AUTOSTART = "duo-code:dev:autostart";
 
 const STARTER = "def add(a: int, b: int) -> int:\n    pass\n";
 const SOLUTION = "def add(a: int, b: int) -> int:\n    return a + b\n";
@@ -184,6 +187,63 @@ function levelOf(xp: number) {
   };
 }
 
+// ---------- revisão ----------
+
+const INTERVALS = [1, 3, 7, 14, 30];
+
+type ReviewRow = {
+  stage: number;
+  due: string;
+  awaiting: boolean;
+  stageBefore: number | null;
+  reviewedOn: string | null;
+};
+
+function reviews(): Record<string, ReviewRow> {
+  return readJson<Record<string, ReviewRow>>(REVIEWS, {});
+}
+
+function saveReview(slug: string, row: ReviewRow) {
+  localStorage.setItem(REVIEWS, JSON.stringify({ ...reviews(), [slug]: row }));
+}
+
+function inDays(from: string, n: number): string {
+  const [y, m, d] = from.split("-").map(Number);
+  return isoDate(new Date(y, m - 1, d + n));
+}
+
+function scheduled(stage: number, from: string) {
+  const capped = Math.min(stage, INTERVALS.length - 1);
+  return { stage: capped, due: inDays(from, INTERVALS[capped]) };
+}
+
+function isDue(slug: string): boolean {
+  const row = reviews()[slug];
+  return row !== undefined && !row.awaiting && row.due <= daysAgo(0);
+}
+
+function scheduleView(row: ReviewRow): ReviewSchedule {
+  return { stage: row.stage, due_date: row.due, awaiting_rating: row.awaiting };
+}
+
+function reviewQueue(): ReviewQueue {
+  const today = daysAgo(0);
+  const rows = Object.entries(reviews());
+  const due = rows
+    .filter(([slug]) => isDue(slug))
+    .sort(([, a], [, b]) => a.due.localeCompare(b.due))
+    .map(([slug, row]) => ({
+      problem: summary(find(slug)),
+      due_date: row.due,
+      days_overdue: Math.round(
+        (new Date(today).getTime() - new Date(row.due).getTime()) / 86_400_000,
+      ),
+      stage: row.stage,
+    }));
+  const future = rows.map(([, row]) => row.due).filter((d) => d > today).sort();
+  return { due, next_due: future[0] ?? null };
+}
+
 function progress(): Progress {
   const events = readJson<XpEvent[]>(EVENTS, []);
   const unlocked = readJson<Record<string, string>>(UNLOCKED, {});
@@ -206,6 +266,7 @@ function progress(): Progress {
     activity: [...byDate.entries()].sort().map(([date, n]) => ({ date, count: n })),
     achievements: CATALOG.map((id) => ({ id, unlocked_on: unlocked[id] ?? null })),
     next_problem: next ? summary(next) : null,
+    reviews_due: reviewQueue().due.length,
   };
 }
 
@@ -285,19 +346,46 @@ function judge(code: string, includeHidden: boolean): RunOutcome {
   };
 }
 
-function submit(slug: string, code: string): SubmitResult {
+function submit(slug: string, code: string, reviewMode: boolean): SubmitResult {
   const p = open(slug);
   const outcome = judge(code, true);
   if (outcome.verdict !== "accepted") return { outcome, rewards: null };
 
   const before = progress();
   const lockedBefore = problems.filter(isLocked).map((x) => x.unit);
-  const reason = has(REWARDED + slug)
-    ? "already_solved"
-    : has(GAVE_UP + slug)
-      ? "gave_up"
-      : "first_solve";
+  const dueReview = reviewMode && isDue(slug);
+  const reason = dueReview
+    ? "review"
+    : has(REWARDED + slug)
+      ? "already_solved"
+      : has(GAVE_UP + slug)
+        ? "gave_up"
+        : "first_solve";
   localStorage.setItem(SOLVED + slug, "1");
+
+  let review: ReviewSchedule | null = null;
+  const existing = reviews()[slug];
+  if (dueReview && existing) {
+    // provisoriamente "ok", até a avaliação chegar
+    const row = {
+      ...scheduled(existing.stage + 1, daysAgo(0)),
+      awaiting: true,
+      stageBefore: existing.stage,
+      reviewedOn: daysAgo(0),
+    };
+    saveReview(slug, row);
+    review = scheduleView(row);
+    const events = readJson<XpEvent[]>(EVENTS, []);
+    events.push({ date: daysAgo(0), amount: 5 });
+    localStorage.setItem(EVENTS, JSON.stringify(events));
+  } else if (!existing) {
+    saveReview(slug, {
+      ...scheduled(0, daysAgo(0)),
+      awaiting: false,
+      stageBefore: null,
+      reviewedOn: null,
+    });
+  }
 
   const earned: string[] = [];
   if (reason === "first_solve") {
@@ -325,7 +413,7 @@ function submit(slug: string, code: string): SubmitResult {
     outcome,
     rewards: {
       reason,
-      xp_gained: reason === "first_solve" ? XP[p.difficulty] : 0,
+      xp_gained: reason === "first_solve" ? XP[p.difficulty] : reason === "review" ? 5 : 0,
       level_before: before.level.level,
       level: after.level,
       streak_before: before.streak.current,
@@ -334,8 +422,38 @@ function submit(slug: string, code: string): SubmitResult {
       units_unlocked: units
         .filter((u) => lockedBefore.includes(u.id) && !stillLocked.has(u.id))
         .map((u) => u.title),
+      review,
     },
   };
+}
+
+function rate(slug: string, rating: Rating): ReviewSchedule {
+  const row = reviews()[slug];
+  if (!row || !row.awaiting) {
+    throw { code: "not_awaiting_rating", message: "this review has no pending rating" };
+  }
+  const before = row.stageBefore ?? row.stage;
+  const stage = rating === "hard" ? 0 : rating === "ok" ? before + 1 : before + 2;
+  const next = {
+    ...scheduled(stage, row.reviewedOn ?? daysAgo(0)),
+    awaiting: false,
+    stageBefore: null,
+    reviewedOn: row.reviewedOn,
+  };
+  saveReview(slug, next);
+  return scheduleView(next);
+}
+
+function fail(slug: string): ReviewSchedule {
+  if (!isDue(slug)) throw { code: "not_due", message: "this problem is not due for review" };
+  const next = {
+    ...scheduled(0, daysAgo(0)),
+    awaiting: false,
+    stageBefore: null,
+    reviewedOn: daysAgo(0),
+  };
+  saveReview(slug, next);
+  return scheduleView(next);
 }
 
 export const devHandlers: Record<string, Handler> = {
@@ -364,7 +482,24 @@ export const devHandlers: Record<string, Handler> = {
     return judge(String(code), false);
   },
 
-  submit_code: ({ slug, code }) => submit(String(slug), String(code)),
+  submit_code: ({ slug, code, review }) => submit(String(slug), String(code), review === true),
+
+  get_review_queue: () => reviewQueue(),
+
+  rate_review: ({ slug, rating }) => rate(String(slug), rating as Rating),
+
+  fail_review: ({ slug }) => fail(String(slug)),
+
+  // Sem área de trabalho no navegador: os comandos existem, mas não fazem nada.
+  test_notification: () => null,
+
+  get_autostart: () => has(AUTOSTART),
+
+  set_autostart: ({ enabled }) => {
+    if (enabled) localStorage.setItem(AUTOSTART, "1");
+    else localStorage.removeItem(AUTOSTART);
+    return null;
+  },
 
   get_progress: () => progress(),
 

@@ -1,5 +1,6 @@
 import { call } from "./client";
 import type { ProblemSummary } from "./problems";
+import type { ReviewSchedule } from "./reviews";
 
 export type DayState = "secured" | "at_risk" | "broken";
 
@@ -18,7 +19,7 @@ export type LevelInfo = {
   next_level_at: number;
 };
 
-export type RewardReason = "first_solve" | "already_solved" | "gave_up";
+export type RewardReason = "first_solve" | "already_solved" | "gave_up" | "review";
 
 export type Rewards = {
   reason: RewardReason;
@@ -31,6 +32,8 @@ export type Rewards = {
   achievements: string[];
   /** Títulos das unidades da trilha que abriram com esta submissão. */
   units_unlocked: string[];
+  /** Novo agendamento, quando a submissão foi uma revisão. */
+  review: ReviewSchedule | null;
 };
 
 export type Progress = {
@@ -43,6 +46,8 @@ export type Progress = {
   activity: { date: string; count: number }[];
   achievements: { id: string; unlocked_on: string | null }[];
   next_problem: ProblemSummary | null;
+  /** Revisões vencidas hoje. */
+  reviews_due: number;
 };
 
 export function getProgress(): Promise<Progress> {

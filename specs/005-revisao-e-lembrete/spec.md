@@ -26,6 +26,9 @@ Resolver uma questão uma vez não basta para lembrar dela na entrevista. A revi
 - O novo vencimento é sempre contado a partir do dia em que a revisão foi feita, não do vencimento original.
 - A fila é ordenada da mais atrasada para a menos atrasada.
 - Revisão aceita rende 5 XP e torna o dia ativo (spec 003).
+- Só conta como revisão a submissão feita **no modo revisão** de uma questão **vencida**. Reenviar pela tela normal, ou revisar o que ainda não venceu, não rende nada.
+- **Avaliação pendente:** no momento em que a revisão é aceita, o XP é creditado e a questão é reagendada provisoriamente como **Ok**. A avaliação escolhida em seguida substitui esse agendamento. Assim, fechar o app antes de avaliar não perde o XP nem deixa a questão presa na fila.
+- Toda questão com submissão aceita entra na revisão — inclusive aquelas em que houve desistência (spec 003).
 
 ## Regras do lembrete
 
@@ -62,6 +65,8 @@ Resolver uma questão uma vez não basta para lembrar dela na entrevista. A revi
 - **CA-11** Horário 19:00, app aberto às 21:00 sem atividade no dia → notifica uma vez.
 - **CA-12** Fechar a janela mantém o ícone na bandeja; "Sair" encerra o processo. (Verificação manual.)
 - **CA-13** "Testar notificação" exibe uma notificação do sistema. (Verificação manual.)
+- **CA-14** Revisão aceita e app fechado sem avaliar → 5 XP creditados e a questão reagendada como **ok**; ao reabrir, ela não está mais na fila de hoje.
+- **CA-15** Submissão aceita de questão vencida feita fora do modo revisão → não rende XP, não muda o agendamento e a questão continua na fila.
 
 ## Fora de escopo
 

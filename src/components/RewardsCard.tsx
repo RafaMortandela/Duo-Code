@@ -20,7 +20,7 @@ function UnitsUnlocked({ titles }: { titles: string[] }) {
 }
 
 export function RewardsCard({ rewards }: { rewards: Rewards }) {
-  if (rewards.reason !== "first_solve") {
+  if (rewards.reason === "already_solved" || rewards.reason === "gave_up") {
     return (
       <div className="rewards" aria-label={copy.rewards.title}>
         <p className="muted">{copy.rewards[rewards.reason]}</p>
@@ -33,6 +33,12 @@ export function RewardsCard({ rewards }: { rewards: Rewards }) {
   return (
     <div className="rewards" aria-label={copy.rewards.title}>
       <div className="reward-chips">
+        {rewards.reason === "review" && (
+          <span className="chip" data-kind="review">
+            <Icon name="review" size={18} />
+            {copy.rewards.reviewed}
+          </span>
+        )}
         <span className="chip" data-kind="xp">
           <Icon name="star" size={18} />
           {copy.rewards.xp(rewards.xp_gained)}

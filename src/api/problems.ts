@@ -87,9 +87,12 @@ export type SubmitResult = {
   rewards: Rewards | null;
 };
 
-/** Roda todos os testes, registra a submissão e devolve as recompensas. */
-export function submitCode(slug: string, code: string): Promise<SubmitResult> {
-  return call("submit_code", { slug, code });
+/**
+ * Roda todos os testes, registra a submissão e devolve as recompensas.
+ * Com `review`, uma submissão aceita de questão vencida conta como revisão.
+ */
+export function submitCode(slug: string, code: string, review = false): Promise<SubmitResult> {
+  return call("submit_code", { slug, code, review });
 }
 
 export function saveDraft(slug: string, code: string): Promise<void> {

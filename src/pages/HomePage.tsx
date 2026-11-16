@@ -43,6 +43,18 @@ export function HomePage() {
           <LevelBar level={level} />
         </section>
 
+        {progress.reviews_due > 0 && (
+          <section className="card review-card">
+            <div className="review-card-text">
+              <Icon name="review" size={28} />
+              <strong>{copy.review.count(progress.reviews_due)}</strong>
+            </div>
+            <Link to="/review" className="btn btn-secondary">
+              {copy.review.homeCta}
+            </Link>
+          </section>
+        )}
+
         <section className="card next-card">
           {next ? (
             <>
