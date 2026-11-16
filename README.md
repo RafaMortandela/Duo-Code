@@ -217,6 +217,10 @@ Para escrever com mais segurança, use a ferramenta em [`scripts/authoring/`](sc
 - **Testado apenas em Linux.**
 - **Fora do MVP:** streak freeze, loja, ranking, contas e sincronização.
 
+## Licença
+
+[MIT](LICENSE). Você pode usar, modificar e redistribuir o código e as questões, desde que mantenha o aviso de copyright.
+
 ## Créditos
 
 Projeto de [Rafaela Silva Ruis](https://github.com/RafaMortandela), desenvolvido com o [Claude Code](https://claude.com/claude-code), da Anthropic.

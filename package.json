@@ -38,5 +38,6 @@
   },
   "overrides": {
     "dompurify": "^3.4.17"
-  }
+  },
+  "license": "MIT"
 }

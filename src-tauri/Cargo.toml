@@ -3,6 +3,7 @@ name = "duo-code"
 version = "0.1.0"
 description = "Treino diário de entrevistas de código"
 edition = "2024"
+license = "MIT"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
