@@ -1,0 +1,167 @@
+/* Movimento e identidade (spec 007). */
+
+.icon {
+  flex: none;
+}
+
+.mascot {
+  flex: none;
+}
+
+/* A opção "Animações" desligada, ou o sistema pedindo menos movimento. */
+:root[data-motion="off"] *,
+:root[data-motion="off"] *::before,
+:root[data-motion="off"] *::after {
+  animation: none !important;
+  transition: none !important;
+}
+
+/* Marca */
+.brand-mark svg {
+  display: block;
+}
+
+/* Mascote balançando de leve */
+.mascot[data-pose="celebrating"] {
+  animation: mascot-hop 900ms var(--ease) infinite alternate;
+}
+
+.mascot[data-pose="sleepy"] {
+  animation: mascot-breathe 3s ease-in-out infinite alternate;
+}
+
+@keyframes mascot-hop {
+  to {
+    transform: translateY(-6px);
+  }
+}
+
+@keyframes mascot-breathe {
+  to {
+    transform: scale(1.03);
+  }
+}
+
+.streak-card .mascot {
+  margin-left: auto;
+}
+
+.empty-mascot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-6) var(--space-5);
+  text-align: center;
+  font-weight: 700;
+}
+
+.rewards-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+/* Confete */
+.confetti {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 20;
+}
+
+.confetti-piece {
+  position: absolute;
+  top: -40px;
+  animation-name: confetti-fall;
+  animation-timing-function: cubic-bezier(0.3, 0.6, 0.6, 1);
+  animation-fill-mode: forwards;
+}
+
+.confetti-piece[data-tone="primary"] {
+  color: var(--primary);
+}
+
+.confetti-piece[data-tone="lavender"] {
+  color: var(--lavender);
+}
+
+.confetti-piece[data-tone="peach"] {
+  color: var(--peach);
+}
+
+.confetti-piece[data-tone="pastel"] {
+  color: var(--pastel);
+}
+
+@keyframes confetti-fall {
+  0% {
+    transform: translateY(0) rotate(0deg);
+    opacity: 1;
+  }
+  80% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(105vh) rotate(300deg);
+    opacity: 0;
+  }
+}
+
+/* Toast de conquista entra com brilho */
+.toast {
+  animation: toast-in 320ms var(--ease);
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+.reward-highlight[data-kind="achievement"] {
+  position: relative;
+  overflow: hidden;
+}
+
+.reward-highlight[data-kind="achievement"]::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(105deg, transparent 35%, var(--surface) 50%, transparent 65%);
+  opacity: 0.55;
+  transform: translateX(-100%);
+  animation: shine 1200ms var(--ease) 250ms forwards;
+  pointer-events: none;
+}
+
+@keyframes shine {
+  to {
+    transform: translateX(100%);
+  }
+}
+
+/* Nó da trilha "desabrocha" ao aparecer liberado */
+.path-node:not([data-state="locked"]) .node-bubble {
+  animation: bloom 420ms var(--ease) backwards;
+}
+
+.path-node:nth-child(2) .node-bubble {
+  animation-delay: 60ms;
+}
+
+.path-node:nth-child(n + 3) .node-bubble {
+  animation-delay: 120ms;
+}
+
+@keyframes bloom {
+  from {
+    transform: scale(0.6);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.08);
+  }
+}

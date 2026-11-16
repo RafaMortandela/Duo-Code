@@ -35,7 +35,7 @@
 }
 
 .sidebar-streak svg {
-  color: var(--primary-strong);
+  color: var(--accent);
 }
 
 .sidebar-streak[data-state="broken"] svg {
@@ -64,7 +64,7 @@
   height: 88px;
   border-radius: 50%;
   background: var(--peach);
-  color: var(--primary-strong);
+  color: var(--accent);
 }
 
 .streak-card[data-state="secured"] .streak-flame {
@@ -332,7 +332,7 @@
 }
 
 .chip[data-kind="streak"] svg {
-  color: var(--primary-strong);
+  color: var(--accent);
 }
 
 .reward-note {
@@ -353,7 +353,7 @@
 
 .reward-highlight svg {
   flex: none;
-  color: var(--primary-strong);
+  color: var(--accent);
 }
 
 .reward-highlight[data-kind="level"] svg {
@@ -382,7 +382,7 @@
 
 .badge[data-overdue="true"] svg,
 .badge[data-review="true"] svg {
-  color: var(--primary-strong);
+  color: var(--accent);
 }
 
 .review-card {
@@ -403,11 +403,11 @@
 }
 
 .review-card-text svg {
-  color: var(--primary-strong);
+  color: var(--accent);
 }
 
 .chip[data-kind="review"] svg {
-  color: var(--primary-strong);
+  color: var(--accent);
 }
 
 .rating {

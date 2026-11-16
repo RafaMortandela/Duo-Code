@@ -82,7 +82,7 @@
 
 .path-node[data-state="completed"] .node-bubble {
   background: var(--lavender);
-  color: var(--text);
+  color: var(--on-accent);
 }
 
 .path-node[data-current="true"] .node-bubble {
@@ -100,7 +100,7 @@
   height: 26px;
   border-radius: 50%;
   background: var(--success);
-  color: var(--text);
+  color: var(--on-accent);
   border: 3px solid var(--bg);
 }
 
@@ -146,5 +146,5 @@
 
 .node-blocked svg {
   flex: none;
-  color: var(--primary-strong);
+  color: var(--accent);
 }

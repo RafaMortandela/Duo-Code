@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { applyEditorTheme, EDITOR_THEME, monaco } from "../editor/monaco";
+import { applyEditorTheme, EDITOR_THEMES, monaco } from "../editor/monaco";
 import { useTheme } from "../theme/ThemeProvider";
 
 export type CodeEditorProps = {
@@ -29,7 +29,7 @@ export function CodeEditor(props: CodeEditorProps) {
     const instance = monaco.editor.create(host.current, {
       value: latest.current.value,
       language: "python",
-      theme: EDITOR_THEME,
+      theme: EDITOR_THEMES[resolved],
       ariaLabel: latest.current.ariaLabel,
       automaticLayout: true,
       fontFamily: getComputedStyle(document.documentElement)

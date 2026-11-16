@@ -1,6 +1,7 @@
 import type { Rewards } from "../api/progress";
 import { copy } from "../copy";
 import { Icon } from "./Icon";
+import { Mascot } from "./Mascot";
 
 /** Resumo de recompensas de uma submissão aceita (spec 003 RF-6). */
 function UnitsUnlocked({ titles }: { titles: string[] }) {
@@ -32,7 +33,9 @@ export function RewardsCard({ rewards }: { rewards: Rewards }) {
   const streakUp = rewards.streak.current > rewards.streak_before;
   return (
     <div className="rewards" aria-label={copy.rewards.title}>
-      <div className="reward-chips">
+      <div className="rewards-head">
+        <Mascot pose="celebrating" size={72} />
+        <div className="reward-chips">
         {rewards.reason === "review" && (
           <span className="chip" data-kind="review">
             <Icon name="review" size={18} />
@@ -47,6 +50,7 @@ export function RewardsCard({ rewards }: { rewards: Rewards }) {
           <Icon name="flame" size={18} />
           {copy.rewards.streak(rewards.streak.current)}
         </span>
+        </div>
       </div>
       {streakUp && <p className="reward-note">{copy.rewards.streakUp}</p>}
       {leveledUp && (

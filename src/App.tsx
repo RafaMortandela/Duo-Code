@@ -9,6 +9,7 @@ import {
   SettingsPage,
   TrailPage,
 } from "./pages";
+import { MotionProvider } from "./motion/MotionProvider";
 import { ProgressProvider } from "./progress/ProgressProvider";
 import { ThemeProvider } from "./theme/ThemeProvider";
 
@@ -16,6 +17,7 @@ export default function App() {
   return (
     <ToastProvider>
       <ThemeProvider>
+        <MotionProvider>
         <ProgressProvider>
           <HashRouter>
             <div className="app">
@@ -34,6 +36,7 @@ export default function App() {
             </div>
           </HashRouter>
         </ProgressProvider>
+        </MotionProvider>
       </ThemeProvider>
     </ToastProvider>
   );

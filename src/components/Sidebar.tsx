@@ -17,7 +17,7 @@ export function Sidebar() {
     <aside className="sidebar">
       <div className="brand">
         <span className="brand-mark" aria-hidden="true">
-          {copy.app.mark}
+          <Icon name="bow" size={26} />
         </span>
         <span className="brand-name">{copy.app.name}</span>
       </div>

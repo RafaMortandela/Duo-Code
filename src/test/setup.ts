@@ -15,12 +15,16 @@ vi.mock("../components/CodeEditor", () => ({
 }));
 
 // jsdom não implementa matchMedia. Cada teste pode trocar `systemDark`.
-export const system = { dark: false };
+export const system = { dark: false, reducedMotion: false };
 
 Object.defineProperty(window, "matchMedia", {
   writable: true,
   value: (query: string) => ({
-    matches: query.includes("dark") ? system.dark : false,
+    matches: query.includes("dark")
+      ? system.dark
+      : query.includes("reduced-motion")
+        ? system.reducedMotion
+        : false,
     media: query,
     addEventListener: vi.fn(),
     removeEventListener: vi.fn(),
@@ -30,7 +34,9 @@ Object.defineProperty(window, "matchMedia", {
 afterEach(() => {
   cleanup();
   system.dark = false;
+  system.reducedMotion = false;
   localStorage.clear();
   window.location.hash = "";
   delete document.documentElement.dataset.theme;
+  delete document.documentElement.dataset.motion;
 });

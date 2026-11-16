@@ -11,6 +11,7 @@ import { getSetting, setSetting } from "../api/settings";
 import { PageShell } from "../components/PageShell";
 import { useToast } from "../components/Toast";
 import { copy } from "../copy";
+import { useMotion } from "../motion/MotionProvider";
 import { useTheme, type ThemePreference } from "../theme/ThemeProvider";
 
 const themeOptions: { value: ThemePreference; label: string }[] = [
@@ -47,6 +48,7 @@ function Toggle({
 export function SettingsPage() {
   const toast = useToast();
   const { preference, setPreference } = useTheme();
+  const motion = useMotion();
   const [enabled, setEnabled] = useState(true);
   const [time, setTime] = useState(DEFAULT_REMINDER_TIME);
   const [autostart, setAutostartState] = useState(false);
@@ -109,6 +111,18 @@ export function SettingsPage() {
             </button>
           ))}
         </div>
+      </div>
+
+      <div className="card section">
+        <div>
+          <h2>{copy.settings.animations}</h2>
+          <p className="muted">{copy.settings.animationsNote}</p>
+        </div>
+        <Toggle
+          label={copy.settings.animationsEnabled}
+          checked={motion.preferred}
+          onChange={motion.setPreferred}
+        />
       </div>
 
       <div className="card section">

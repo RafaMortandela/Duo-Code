@@ -10,8 +10,15 @@ import { copy } from "../copy";
 /** Ícones que `units.json` pode pedir; o que não estiver aqui vira estrela. */
 const unitIcons: Record<string, IconName> = {
   hash: "hash",
+  pointers: "pointers",
+  window: "window",
   stack: "stack",
+  search: "search",
   link: "link",
+  tree: "tree",
+  heap: "heap",
+  graph: "graph",
+  table: "table",
 };
 
 /** Estado de navegação usado quando uma questão bloqueada redireciona para cá. */

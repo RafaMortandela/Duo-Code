@@ -11,7 +11,11 @@ self.MonacoEnvironment = {
   getWorker: () => new EditorWorker(),
 };
 
-export const EDITOR_THEME = "duo-rose";
+/** Tema do editor para cada modo do app (spec 007). */
+export const EDITOR_THEMES: Record<ResolvedTheme, string> = {
+  light: "duo-rose",
+  dark: "duo-rose-noir",
+};
 
 function token(name: string): string {
   return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
@@ -24,7 +28,8 @@ function bare(name: string): string {
 
 /** (Re)define o tema do editor a partir dos tokens CSS do tema atual. */
 export function applyEditorTheme(resolved: ResolvedTheme) {
-  monaco.editor.defineTheme(EDITOR_THEME, {
+  const name = EDITOR_THEMES[resolved];
+  monaco.editor.defineTheme(name, {
     base: resolved === "dark" ? "vs-dark" : "vs",
     inherit: true,
     rules: [
@@ -38,7 +43,7 @@ export function applyEditorTheme(resolved: ResolvedTheme) {
       "editor.background": token("--surface"),
       "editor.foreground": token("--text"),
       "editorLineNumber.foreground": token("--text-muted"),
-      "editorLineNumber.activeForeground": token("--primary-strong"),
+      "editorLineNumber.activeForeground": token("--accent-text"),
       "editor.lineHighlightBackground": token("--surface-alt"),
       "editor.lineHighlightBorder": token("--surface-alt"),
       "editorCursor.foreground": token("--primary"),
@@ -48,7 +53,7 @@ export function applyEditorTheme(resolved: ResolvedTheme) {
       "editorWidget.border": token("--border"),
     },
   });
-  monaco.editor.setTheme(EDITOR_THEME);
+  monaco.editor.setTheme(name);
 }
 
 export { monaco };

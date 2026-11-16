@@ -14,14 +14,16 @@ O Duo Code deve ter cara própria: rosa, fofo e bem acabado — um app que dá v
 | `--surface` | `#FFFFFF` | cartões, painéis |
 | `--surface-alt` | `#FFE4EC` | áreas de destaque suave, hover |
 | `--primary` | `#FF5C9A` | botões, itens ativos, barras de progresso |
-| `--primary-strong` | `#E6337A` | hover/pressionado, links |
+| `--primary-strong` | `#D81B68` | botões, hover/pressionado, links |
 | `--pastel` | `#FFB8D2` | bordas, preenchimentos decorativos |
 | `--lavender` | `#C9A7F5` | acento secundário (XP, níveis) |
 | `--peach` | `#FFC9A8` | acento terciário (streak, calor) |
 | `--text` | `#4A1F36` | texto principal |
 | `--text-muted` | `#8A5A72` | texto secundário |
 | `--success` | `#5CCFA0` | aceito |
-| `--error` | `#D7264F` | erro, resposta errada |
+| `--error` | `#C81C45` | erro, resposta errada |
+
+As cores `--primary-strong` e `--error` foram escurecidas em relação à primeira versão desta spec (`#E6337A` e `#D7264F`) porque a medição de contraste as reprovou; ver [plan.md](plan.md).
 
 ### Escuro — "rosé noir"
 

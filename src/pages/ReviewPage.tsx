@@ -3,7 +3,8 @@ import { Link } from "react-router-dom";
 import { getReviewQueue, type ReviewQueue } from "../api/reviews";
 import { DifficultyBadge } from "../components/Badges";
 import { Icon } from "../components/Icon";
-import { EmptyCard, PageShell } from "../components/PageShell";
+import { Mascot } from "../components/Mascot";
+import { PageShell } from "../components/PageShell";
 import { useToast } from "../components/Toast";
 import { copy } from "../copy";
 import { displayDay } from "../lib/dates";
@@ -32,14 +33,15 @@ export function ReviewPage() {
       {queue === null ? (
         <p className="muted">{copy.review.loading}</p>
       ) : queue.due.length === 0 ? (
-        <>
-          <EmptyCard message={copy.review.empty} />
+        <div className="card empty-mascot">
+          <Mascot pose="sleepy" size={150} />
+          <p>{copy.review.empty}</p>
           <p className="muted">
             {queue.next_due
               ? copy.review.emptyNext(displayDay(queue.next_due))
               : copy.review.emptyNever}
           </p>
-        </>
+        </div>
       ) : (
         <section className="card section">
           <h2>{copy.review.count(queue.due.length)}</h2>

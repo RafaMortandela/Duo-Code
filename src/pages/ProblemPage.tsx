@@ -14,6 +14,7 @@ import {
 import type { Rewards } from "../api/progress";
 import { failReview, type ReviewSchedule } from "../api/reviews";
 import { CodeEditor } from "../components/CodeEditor";
+import { Confetti } from "../components/Confetti";
 import { DifficultyBadge, StatusBadge } from "../components/Badges";
 import { Icon } from "../components/Icon";
 import { ResultsPanel, type RunMode } from "../components/ResultsPanel";
@@ -39,6 +40,8 @@ export function ProblemPage() {
   const [initialCode, setInitialCode] = useState("");
   const [outcome, setOutcome] = useState<RunOutcome | null>(null);
   const [rewards, setRewards] = useState<Rewards | null>(null);
+  // Conta as submissões que renderam XP: cada uma dispara o confete.
+  const [celebrations, setCelebrations] = useState(0);
   const [mode, setMode] = useState<RunMode>("run");
   const [busy, setBusy] = useState(false);
   const [hintsShown, setHintsShown] = useState(0);
@@ -127,6 +130,7 @@ export function ProblemPage() {
           const result = await submitCode(slug, code.current, reviewMode);
           setOutcome(result.outcome);
           setRewards(result.rewards);
+          if (result.rewards && result.rewards.xp_gained > 0) setCelebrations((n) => n + 1);
           void refreshProgress();
           const solved = result.outcome.verdict === "accepted" || problem.status === "solved";
           setProblem({
@@ -194,6 +198,7 @@ export function ProblemPage() {
   const nextHint = hintsShown + 1;
   return (
     <div className="problem">
+      <Confetti burst={celebrations} />
       <article className="problem-statement card">
         <Link to={reviewMode ? "/review" : "/trail"} className="back-link">
           <Icon name="back" size={18} />

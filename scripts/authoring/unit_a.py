@@ -336,7 +336,7 @@ def count_duets(prices: list[int], budget: int) -> int:
         [[1, 2, 3, 4, 5], 100],
         [[3, 3, 3, 3], 5],
         [[1, 1, 2, 2, 9], 3],
-        [sorted(R.randint(1, 1_000_000) for _ in range(12_000)), 1_000_000],
+        [sorted(R.randint(1, 9_999) for _ in range(24_000)), 9_999],
     ],
 })
 

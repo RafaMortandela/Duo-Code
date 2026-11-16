@@ -32,7 +32,7 @@
 }
 
 .back-link:hover {
-  color: var(--primary-strong);
+  color: var(--accent-text);
 }
 
 .problem-header {

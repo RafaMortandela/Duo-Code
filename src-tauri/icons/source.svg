@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <!-- Ícone do Duo Code: laço + </> (spec 007). Gere os tamanhos com:
+       npm run tauri icon src-tauri/icons/source.svg -->
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ff5c9a"/>
+      <stop offset="1" stop-color="#d81b68"/>
+    </linearGradient>
+  </defs>
+  <rect x="64" y="64" width="896" height="896" rx="216" fill="url(#bg)"/>
+  <!-- laço -->
+  <g fill="#ffffff">
+    <path d="M512 372 276 236c-26-15-58 4-58 34v204c0 30 32 49 58 34L512 372Z"/>
+    <path d="M512 372l236-136c26-15 58 4 58 34v204c0 30-32 49-58 34L512 372Z"/>
+  </g>
+  <circle cx="512" cy="372" r="70" fill="#ffe4ec"/>
+  <!-- </> -->
+  <g fill="none" stroke="#ffffff" stroke-width="56" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M388 610 268 714l120 104"/>
+    <path d="M636 610l120 104-120 104"/>
+    <path d="M556 584 468 844"/>
+  </g>
+</svg>

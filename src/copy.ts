@@ -219,6 +219,10 @@ export const copy = {
     themeAuto: "Automático",
     themeLight: "Claro",
     themeDark: "Rosé noir",
+    animations: "Animações",
+    animationsNote:
+      "Confete, brilhos e a mascote se mexendo. Se o seu sistema pede menos movimento, elas já ficam desligadas.",
+    animationsEnabled: "Mostrar animações",
     reminder: "Lembrete diário",
     reminderNote:
       "Uma notificação no horário escolhido, só se você ainda não tiver resolvido nada no dia.",
